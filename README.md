@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RaiRin-AI — Official Site
 
-## Getting Started
+Marketing and licensing site for **RaiRin-AI**, a Magisk root module that pairs an onboard AI assistant with a game booster engine for Android.
 
-First, run the development server:
+Live: deployed on Vercel from this repository (`main` branch, auto-deploy).
+
+## Stack
+
+- Next.js 16 (App Router) + TypeScript
+- Hand-written skeuomorphic CSS design system in `src/app/globals.css`
+- No UI libraries
+
+## Design contract
+
+The visual language mirrors the module dashboard itself:
+
+- one light source, straight down
+- debossed controls: dark rim above, light rim below, zero elevation
+- raised panels: specular top rim, occlusion below, real drop shadow
+- pressed states cut deeper, never translate
+- accent parts take a coloured floor with a neutral bevel
+- panels are opaque
+
+## Content map
+
+`src/app/page.tsx` holds every string: features, supported SoC families, spoof profile samples, license terms, payment methods, and the four-step activation flow.
+
+| Item | Where |
+|---|---|
+| Banner | `public/banner.png` |
+| Payment details | `PAY_ID`, `PAY_INTL` |
+| Serial command | `SERIAL_CMD` |
+| Contact links | `TELEGRAM`, `PAYPAL`, `TRAKTEER`, `KOFI`, `GITHUB` |
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Production build:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Licensing model
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+One donation, minimum Rp 10.000 (about USD 1.30), buys a permanent license bound to a single device serial number. Buyers send payment proof plus the output of `su -c getprop ro.serialno` to [t.me/kaminarich](https://t.me/kaminarich) for manual registration.
