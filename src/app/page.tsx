@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import CopyButton from "@/components/CopyButton";
+import ScrollReveal from "@/components/ScrollReveal";
 
 const TELEGRAM = "https://t.me/kaminarich";
 const PAYPAL = "https://paypal.me/kaminarich";
@@ -223,15 +224,17 @@ const PAY_INTL: PayMethod[] = [
 export default function Page() {
   return (
     <>
+      <ScrollReveal />
       <header className="topbar">
         <div className="topbar-inner">
           <a className="brand" href="#top">
-            <span className="led" />
+            <span className="led led--live" />
             <span className="brand-mark">
               RAIRIN<em>-AI</em>
             </span>
           </a>
           <nav className="nav-links">
+            <a href="#preview">Preview</a>
             <a href="#features">Features</a>
             <a href="#compatibility">Compatibility</a>
             <a href="#license">License</a>
@@ -248,19 +251,19 @@ export default function Page() {
         <section className="hero">
           <div className="shell">
             <div className="hero-copy">
-              <p className="kicker">
-                <span className="led" />
+              <p className="kicker" data-reveal>
+                <span className="led led--live" />
                 Magisk module · root · Android
               </p>
-              <h1>
+              <h1 data-reveal data-delay="1">
                 RaiRin<span className="ai">-AI</span>
               </h1>
-              <p className="lede">
+              <p className="lede" data-reveal data-delay="2">
                 A root module that puts an AI assistant and a deep game booster on the same panel. Tune performance per
                 game, present your device as flagship hardware, and drive all of it from a floating dashboard that never
                 leaves your match.
               </p>
-              <div className="cta-row">
+              <div className="cta-row" data-reveal data-delay="3">
                 <a className="btn btn--accent" href="#license">
                   Get licensed — Rp 10.000
                   {icons.arrow}
@@ -271,7 +274,7 @@ export default function Page() {
               </div>
             </div>
 
-            <div className="plate">
+            <div className="plate" data-reveal="scale" data-delay="2">
               <Image
                 src="/banner.png"
                 alt="RaiRin-AI"
@@ -284,21 +287,92 @@ export default function Page() {
             </div>
 
             <div className="stats">
-              <div className="well stat">
+              <div className="well stat" data-reveal data-delay="1">
                 <b>40+</b>
                 <span>Device profiles</span>
               </div>
-              <div className="well stat">
+              <div className="well stat" data-reveal data-delay="2">
                 <b>5</b>
                 <span>SoC families</span>
               </div>
-              <div className="well stat">
+              <div className="well stat" data-reveal data-delay="3">
                 <b>4</b>
                 <span>Booster modes</span>
               </div>
-              <div className="well stat">
+              <div className="well stat" data-reveal data-delay="4">
                 <b>1×</b>
                 <span>One-time payment</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="section" id="preview">
+          <div className="shell">
+            <div className="section-head">
+              <p className="kicker" data-reveal>
+                <span className="led" />
+                On-device look
+              </p>
+              <h2 className="title" data-reveal data-delay="1">
+                The panel you actually operate
+              </h2>
+              <p className="lede" data-reveal data-delay="2">
+                Two surfaces ship with the module: a landscape dashboard for setup before you play, and a compact R-BOOST
+                overlay that rides on top of the game while you do.
+              </p>
+            </div>
+
+            <div className="shots">
+              <div className="shot" data-reveal="left">
+                <div className="screen">
+                  <Image
+                    src="/dashboard-preview.jpg"
+                    alt="RaiRin-AI dashboard showing game selection, spoof state, Tweak, Battery and Ask RaiRin controls with live CPU, RAM and temperature readouts"
+                    width={1920}
+                    height={864}
+                    sizes="(max-width: 980px) 100vw, 680px"
+                  />
+                </div>
+                <p className="shot-caption">
+                  <span className="led" />
+                  Dashboard
+                </p>
+                <p>
+                  Pick a game, arm a spoof profile and set resolution, then launch. The top rail keeps CPU load, RAM,
+                  temperature and battery in view, with Tweak, Battery and Ask RaiRin one press away.
+                </p>
+                <div className="shot-tags">
+                  <span className="chip chip--device">Game rail</span>
+                  <span className="chip chip--device">Spoof state</span>
+                  <span className="chip chip--device">Live telemetry</span>
+                  <span className="chip chip--device">Ask RaiRin</span>
+                </div>
+              </div>
+
+              <div className="shot" data-reveal="right" data-delay="2">
+                <div className="screen">
+                  <Image
+                    src="/overlay-preview.jpg"
+                    alt="R-BOOST in-game overlay showing CPU clock and temperature gauges, a 64.0 FPS at 120 Hz readout, and ECO, DEFAULT, BALANCE and R-BOOST mode buttons"
+                    width={980}
+                    height={1089}
+                    sizes="(max-width: 980px) 100vw, 400px"
+                  />
+                </div>
+                <p className="shot-caption">
+                  <span className="led led--accent" />
+                  R-BOOST overlay
+                </p>
+                <p>
+                  Live FPS against refresh rate, CPU clock and temperature gauges, and all four modes latched in one
+                  strip — switchable mid-match without leaving the game.
+                </p>
+                <div className="shot-tags">
+                  <span className="chip chip--device">FPS · Hz</span>
+                  <span className="chip chip--device">Mode switch</span>
+                  <span className="chip chip--device">Clean · RAM · DND</span>
+                </div>
               </div>
             </div>
           </div>
@@ -307,20 +381,27 @@ export default function Page() {
         <section className="section" id="features">
           <div className="shell">
             <div className="section-head">
-              <p className="kicker">
+              <p className="kicker" data-reveal>
                 <span className="led led--accent" />
                 What it does
               </p>
-              <h2 className="title">Built like hardware, not a settings screen</h2>
-              <p className="lede">
+              <h2 className="title" data-reveal data-delay="1">
+                Built like hardware, not a settings screen
+              </h2>
+              <p className="lede" data-reveal data-delay="2">
                 Every control in RaiRin-AI is machined into a single panel: debossed keys, lit from above, that cut
                 deeper when you press them. Underneath sits a root-level engine with real reach into the system.
               </p>
             </div>
 
             <div className="grid-3">
-              {FEATURES.map((f) => (
-                <article className="panel feature" key={f.key}>
+              {FEATURES.map((f, i) => (
+                <article
+                  className="panel feature"
+                  key={f.key}
+                  data-reveal
+                  data-delay={String((i % 3) + 1)}
+                >
                   <span className="socket">{icons[f.key]}</span>
                   <h3>{f.title}</h3>
                   <p>{f.text}</p>
@@ -341,18 +422,20 @@ export default function Page() {
         <section className="section tray" id="compatibility">
           <div className="shell">
             <div className="section-head">
-              <p className="kicker">
+              <p className="kicker" data-reveal>
                 <span className="led" />
                 Compatibility
               </p>
-              <h2 className="title">Five silicon families, one module</h2>
-              <p className="lede">
+              <h2 className="title" data-reveal data-delay="1">
+                Five silicon families, one module
+              </h2>
+              <p className="lede" data-reveal data-delay="2">
                 RaiRin-AI reads the SoC it is running on and tunes for it. Spoof profiles carry matching SoC model and
                 hardware strings, so a spoofed identity stays coherent with what the game sees.
               </p>
             </div>
 
-            <div className="panel screws">
+            <div className="panel screws" data-reveal="scale">
               <div className="chip-row">
                 {SOCS.map((soc) => (
                   <span className="chip" key={soc}>
@@ -395,20 +478,22 @@ export default function Page() {
         <section className="section" id="license">
           <div className="shell">
             <div className="section-head">
-              <p className="kicker">
+              <p className="kicker" data-reveal>
                 <span className="led led--accent" />
                 Licensing
               </p>
-              <h2 className="title">Pay once. Licensed for good.</h2>
-              <p className="lede">
+              <h2 className="title" data-reveal data-delay="1">
+                Pay once. Licensed for good.
+              </h2>
+              <p className="lede" data-reveal data-delay="2">
                 A single donation unlocks RaiRin-AI permanently on one device. The license is registered against that
                 device serial number, so it survives reinstalls and module updates.
               </p>
             </div>
 
-            <div className="panel screws">
+            <div className="panel screws" data-reveal="scale">
               <div className="license-grid">
-                <div>
+                <div data-reveal="left" data-delay="1">
                   <span className="badge">Permanent license</span>
                   <div className="price">
                     <b>Rp 10.000</b>
@@ -436,7 +521,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                <div className="well req">
+                <div className="well req" data-reveal="right" data-delay="3">
                   <h4>Before you pay</h4>
                   <ul>
                     <li>
@@ -477,19 +562,21 @@ export default function Page() {
         <section className="section tray" id="payment">
           <div className="shell">
             <div className="section-head">
-              <p className="kicker">
+              <p className="kicker" data-reveal>
                 <span className="led" />
                 Where to pay
               </p>
-              <h2 className="title">Payment methods</h2>
-              <p className="lede">
+              <h2 className="title" data-reveal data-delay="1">
+                Payment methods
+              </h2>
+              <p className="lede" data-reveal data-delay="2">
                 Any method below works. Pay the minimum or more, keep the receipt, then send it with your device serial
                 number on Telegram.
               </p>
             </div>
 
             <div className="grid-2">
-              <div className="panel pay-group">
+              <div className="panel pay-group" data-reveal="left">
                 <h3>
                   <span className="led" />
                   Indonesia
@@ -510,7 +597,7 @@ export default function Page() {
                 </div>
               </div>
 
-              <div className="panel pay-group">
+              <div className="panel pay-group" data-reveal="right" data-delay="2">
                 <h3>
                   <span className="led led--accent" />
                   International
@@ -543,18 +630,20 @@ export default function Page() {
         <section className="section" id="how-to-buy">
           <div className="shell">
             <div className="section-head">
-              <p className="kicker">
+              <p className="kicker" data-reveal>
                 <span className="led led--accent" />
                 How to get it
               </p>
-              <h2 className="title">Four steps to an activated device</h2>
-              <p className="lede">
+              <h2 className="title" data-reveal data-delay="1">
+                Four steps to an activated device
+              </h2>
+              <p className="lede" data-reveal data-delay="2">
                 Registration is manual and handled personally, so your serial is only ever bound with your own consent.
               </p>
             </div>
 
             <div className="steps">
-              <article className="panel step">
+              <article className="panel step" data-reveal data-delay="1">
                 <span className="step-num">1</span>
                 <span className="socket socket--sm socket--dim">{icons.coin}</span>
                 <h3>Donate</h3>
@@ -564,7 +653,7 @@ export default function Page() {
                 </p>
               </article>
 
-              <article className="panel step">
+              <article className="panel step" data-reveal data-delay="2">
                 <span className="step-num">2</span>
                 <span className="socket socket--sm socket--dim">{icons.serial}</span>
                 <h3>Read your serial</h3>
@@ -583,7 +672,7 @@ export default function Page() {
                 </div>
               </article>
 
-              <article className="panel step">
+              <article className="panel step" data-reveal data-delay="3">
                 <span className="step-num">3</span>
                 <span className="socket socket--sm socket--dim">{icons.proof}</span>
                 <h3>Send proof</h3>
@@ -596,7 +685,7 @@ export default function Page() {
                 </a>
               </article>
 
-              <article className="panel step">
+              <article className="panel step" data-reveal data-delay="4">
                 <span className="step-num">4</span>
                 <span className="socket socket--sm socket--dim">{icons.check}</span>
                 <h3>Get activated</h3>
@@ -611,9 +700,9 @@ export default function Page() {
 
         <section className="section" id="contact">
           <div className="shell">
-            <div className="panel screws contact-panel">
+            <div className="panel screws contact-panel" data-reveal="scale">
               <p className="kicker">
-                <span className="led" />
+                <span className="led led--live" />
                 Contact
               </p>
               <h2 className="title">Talk to the developer directly</h2>
@@ -651,7 +740,7 @@ export default function Page() {
           <div className="divider" />
           <div className="footer-inner">
             <a className="brand" href="#top">
-              <span className="led" />
+              <span className="led led--live" />
               <span className="brand-mark">
                 RAIRIN<em>-AI</em>
               </span>
