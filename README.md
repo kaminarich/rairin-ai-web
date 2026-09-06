@@ -28,9 +28,22 @@ The visual language mirrors the module dashboard itself:
 | Item | Where |
 |---|---|
 | Banner | `public/banner.png` |
+| Dashboard / overlay previews | `public/dashboard-preview.jpg`, `public/overlay-preview.jpg` |
 | Payment details | `PAY_ID`, `PAY_INTL` |
 | Serial command | `SERIAL_CMD` |
 | Contact links | `TELEGRAM`, `PAYPAL`, `TRAKTEER`, `KOFI`, `GITHUB` |
+| Active-user figure | `src/lib/licenseStats.ts` (env-driven) |
+
+## Active licensed users
+
+The first hero stat shows the deduplicated count of registered device serials. It is read at build/request time from environment variables — nothing about the license server lives in this repo. See `.env.example` for the keys and set them in Vercel under Settings → Environment Variables, or as GitHub Actions secrets if a workflow ever publishes them:
+
+- `RAIRIN_ACTIVE_DEVICES` — plain integer
+- `RAIRIN_STATS_UPDATED_AT` — date shown beside the figure
+- `RAIRIN_STATS_URL` — optional JSON endpoint returning `{ "unique": <int> }`, re-read every 15 minutes and preferred over the static count
+- `RAIRIN_STATS_TOKEN` — optional bearer token for that endpoint
+
+With none of them set, that tile falls back to the device-profile count, so the page never shows a placeholder or an invented number.
 
 ## Local development
 

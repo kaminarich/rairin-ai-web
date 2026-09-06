@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import CopyButton from "@/components/CopyButton";
 import ScrollReveal from "@/components/ScrollReveal";
+import { formatCount, getLicenseStats } from "@/lib/licenseStats";
 
 const TELEGRAM = "https://t.me/kaminarich";
 const PAYPAL = "https://paypal.me/kaminarich";
@@ -221,7 +222,8 @@ const PAY_INTL: PayMethod[] = [
   { key: "coffee", name: "Ko-fi", value: "ko-fi.com/kaminarich_here", href: KOFI },
 ];
 
-export default function Page() {
+export default async function Page() {
+  const { activeDevices, updatedAt } = await getLicenseStats();
   return (
     <>
       <ScrollReveal />
@@ -287,9 +289,21 @@ export default function Page() {
             </div>
 
             <div className="stats">
-              <div className="well stat" data-reveal data-delay="1">
-                <b>40+</b>
-                <span>Device profiles</span>
+              <div className="well stat stat--live" data-reveal data-delay="1">
+                {activeDevices === null ? (
+                  <>
+                    <b>40+</b>
+                    <span>Device profiles</span>
+                  </>
+                ) : (
+                  <>
+                    <b>
+                      <span className="led led--live" />
+                      {formatCount(activeDevices)}
+                    </b>
+                    <span>Active licensed users</span>
+                  </>
+                )}
               </div>
               <div className="well stat" data-reveal data-delay="2">
                 <b>5</b>
@@ -304,6 +318,13 @@ export default function Page() {
                 <span>One-time payment</span>
               </div>
             </div>
+
+            {activeDevices === null ? null : (
+              <p className="stats-note" data-reveal data-delay="5">
+                Verified device serials registered on the license server
+                {updatedAt ? `, as of ${updatedAt}` : ""}. Every entry is permanent and bound to one device.
+              </p>
+            )}
           </div>
         </section>
 
