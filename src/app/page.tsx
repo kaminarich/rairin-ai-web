@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import CopyButton from "@/components/CopyButton";
 import ScrollReveal from "@/components/ScrollReveal";
+import ModeSelector from "@/components/ModeSelector";
 import { formatCount, getLicenseStats } from "@/lib/licenseStats";
 
 const TELEGRAM = "https://t.me/kaminarich";
@@ -426,14 +427,7 @@ export default async function Page() {
                   <span className="socket">{icons[f.key]}</span>
                   <h3>{f.title}</h3>
                   <p>{f.text}</p>
-                  {f.seg ? (
-                    <div className="seg" aria-hidden="true">
-                      <span className="on">R-BOOST</span>
-                      <span>BALANCE</span>
-                      <span>ECO</span>
-                      <span>DEFAULT</span>
-                    </div>
-                  ) : null}
+{f.seg ? <ModeSelector /> : null}
                 </article>
               ))}
             </div>
