@@ -18,7 +18,7 @@ const MODES = [
       "I/O scheduler → deadline for game",
     ],
     color: "#ff3b1a",
-    icon: "⚡",
+    icon: "RB",
   },
   {
     id: "balance",
@@ -35,24 +35,24 @@ const MODES = [
       "I/O scheduler → bfq",
     ],
     color: "#ff8c00",
-    icon: "⚖️",
+    icon: "BL",
   },
   {
     id: "eco",
     label: "ECO",
     short: "Battery Saver",
-    description: "Extends playtime by aggressively managing power. Caps frequencies, enables aggressive doze, reduces screen refresh when possible, and kills non-essential background work. Performance takes a hit but you get significantly more screen-on time.",
+    description: "Extends playtime by aggressively managing power. Caps frequencies, reduces screen refresh when possible, and kills non-essential background work. Performance takes a hit but you get significantly more screen-on time.",
     details: [
-      "CPU governor → powersave",
+      "CPU frequencies capped aggressively",
       "GPU frequency capped at 50%",
       "Thermal throttling at 70°C",
-      "Scheduler → batch/idle for background",
+      "Background tasks minimized",
       "Non-essential services stopped",
       "Memory compaction minimal",
       "Screen refresh → 60Hz cap",
     ],
     color: "#22c55e",
-    icon: "🔋",
+    icon: "EC",
   },
   {
     id: "default",
@@ -69,7 +69,7 @@ const MODES = [
       "I/O scheduler → stock (cfq/bfq)",
     ],
     color: "#3b82f6",
-    icon: "📱",
+    icon: "DF",
   },
 ];
 
