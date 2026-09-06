@@ -71,11 +71,10 @@ const MODES = [
     color: "#3b82f6",
     icon: "📱",
   },
-};
+];
 
 export default function InteractiveModeSelector() {
   const [selected, setSelected] = useState<string>("rboost");
-  const [expanded, setExpanded] = useState<string | null>(null);
 
   const mode = MODES.find(m => m.id === selected) || MODES[0];
 
@@ -90,10 +89,7 @@ export default function InteractiveModeSelector() {
             aria-controls={`panel-${m.id}`}
             id={`tab-${m.id}`}
             className={`mode-tab${selected === m.id ? " active" : ""}`}
-            onClick={() => {
-              setSelected(m.id);
-              setExpanded(m.id);
-            }}
+            onClick={() => setSelected(m.id)}
             style={{ "--accent-color": m.color } as React.CSSProperties}
           >
             <span className="mode-icon">{m.icon}</span>
@@ -123,133 +119,6 @@ export default function InteractiveModeSelector() {
           </ul>
         </div>
       </div>
-
-      <style jsx>{`
-        .mode-selector {
-          margin-top: 16px;
-        }
-        .mode-tabs {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          margin-bottom: 16px;
-        }
-        .mode-tab {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 16px;
-          border: 1px solid var(--line);
-          border-radius: 999px;
-          background: linear-gradient(180deg, var(--floor-lo), var(--floor-hi));
-          color: var(--ink-dim);
-          font-family: var(--mono);
-          font-size: 12px;
-          font-weight: 600;
-          letter-spacing: 0.08em;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          box-shadow:
-            inset 0 2px 5px rgba(0,0,0,0.8),
-            inset 0 -1px 0 rgba(255,255,255,0.06);
-        }
-        .mode-tab:hover {
-          color: var(--ink);
-          filter: brightness(1.15);
-        }
-        .mode-tab.active {
-          color: #fff;
-          border-color: transparent;
-          background: linear-gradient(180deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 70%, black));
-          box-shadow:
-            inset 0 2px 4px rgba(0,0,0,0.4),
-            inset 0 -1px 0 rgba(255,255,255,0.16),
-            0 0 20px color-mix(in srgb, var(--accent-color) 40%, transparent);
-        }
-        .mode-icon {
-          font-size: 14px;
-        }
-        .mode-panel {
-          padding: 20px;
-          border: 1px solid var(--line);
-          border-radius: 16px;
-          background: linear-gradient(180deg, var(--panel-hi) 0%, var(--panel-mid) 50%, var(--panel-lo) 100%);
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,0.18),
-            inset 0 -2px 6px rgba(0,0,0,0.5);
-          animation: panel-in 0.25s cubic-bezier(0.22, 0.8, 0.25, 1);
-        }
-        @keyframes panel-in {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: none; }
-        }
-        .mode-header {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          margin-bottom: 14px;
-          padding-bottom: 14px;
-          border-bottom: 1px solid var(--line);
-        }
-        .mode-icon-large {
-          font-size: 36px;
-          filter: drop-shadow(0 0 12px var(--accent-color));
-        }
-        .mode-title-row {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-        .mode-title {
-          font-size: 20px;
-          font-weight: 700;
-          color: var(--ink);
-          text-shadow: 0 0 16px var(--accent-color);
-        }
-        .mode-short {
-          font-family: var(--mono);
-          font-size: 12px;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: var(--ink-dim);
-        }
-        .mode-description {
-          color: var(--ink-dim);
-          line-height: 1.7;
-          margin-bottom: 18px;
-          font-size: 14px;
-        }
-        .mode-details h5 {
-          font-family: var(--mono);
-          font-size: 11px;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: var(--ink-faint);
-          margin-bottom: 10px;
-        }
-        .mode-details ul {
-          list-style: none;
-          display: grid;
-          gap: 8px;
-        }
-        .mode-details li {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          font-size: 13px;
-          color: var(--ink-dim);
-          line-height: 1.55;
-        }
-        .detail-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          flex: none;
-          margin-top: 5px;
-          background: var(--accent-color);
-          box-shadow: 0 0 8px var(--accent-color);
-        }
-      `}
     </div>
   );
 }
