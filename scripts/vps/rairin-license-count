@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Report RaiRin licence counts as JSON. Runs on the VPS.
+
+Counts registered device serials the way the verification server resolves them:
+the root whitelist plus every reseller whitelist, deduplicated, with blacklisted
+serials subtracted for the "active" figure.
+
+Only aggregate integers are printed. No serial, path or credential is emitted,
+so the output is safe to expose publicly.
+
+Install (as the SSH user, or root):
+
+    sudo install -m 0755 rairin-license-count /usr/local/bin/rairin-license-count
+    RAIRIN_DIR=/home/<user>/rairin /usr/local/bin/rairin-license-count
+
+Environment:
+    RAIRIN_DIR  directory holding whitelist.json, blacklist.txt and resellers/
+                (default: ~/rairin)
+"""
+
+from __future__ import annotations
+
+import glob
+import json
+import os
+import sys
+
+
+def serials_from_json(path: str) -> set[str]:
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return set()
+
+    if isinstance(data, dict):
+        return {str(key).strip() for key in data if str(key).strip()}
+    if isinstance(data, list):
+        return {str(item).strip() for item in data if str(item).strip()}
+    return set()
+
+
+def serials_from_lines(path: str) -> set[str]:
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return {line.strip() for line in handle if line.strip()}
+    except OSError:
+        return set()
+
+
+def main() -> int:
+    base = os.path.expanduser(os.environ.get("RAIRIN_DIR", "~/rairin"))
+
+    root = serials_from_json(os.path.join(base, "whitelist.json"))
+
+    reseller_files = sorted(glob.glob(os.path.join(base, "resellers", "*", "whitelist.json")))
+    reseller: set[str] = set()
+    for path in reseller_files:
+        reseller |= serials_from_json(path)
+
+    registered = root | reseller
+    blacklist = serials_from_lines(os.path.join(base, "blacklist.txt"))
+
+    print(json.dumps({
+        "active": len(registered - blacklist),
+        "registered": len(registered),
+        "root": len(root),
+        "reseller": len(reseller),
+        "resellers": len(reseller_files),
+        "blacklisted": len(registered & blacklist),
+    }))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

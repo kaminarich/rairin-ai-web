@@ -223,7 +223,7 @@ const PAY_INTL: PayMethod[] = [
 ];
 
 export default async function Page() {
-  const { activeDevices, updatedAt } = await getLicenseStats();
+  const { activeDevices, updatedAt, live } = await getLicenseStats();
   return (
     <>
       <ScrollReveal />
@@ -321,8 +321,8 @@ export default async function Page() {
 
             {activeDevices === null ? null : (
               <p className="stats-note" data-reveal data-delay="5">
-                Verified device serials registered on the license server
-                {updatedAt ? `, as of ${updatedAt}` : ""}. Every entry is permanent and bound to one device.
+                {live ? "Live from the licence server" : "Verified device serials on the licence server"}
+                {updatedAt ? ` · updated ${updatedAt}` : ""} · every entry is permanent and bound to one device
               </p>
             )}
           </div>

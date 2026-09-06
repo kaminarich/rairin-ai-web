@@ -36,14 +36,58 @@ The visual language mirrors the module dashboard itself:
 
 ## Active licensed users
 
-The first hero stat shows the deduplicated count of registered device serials. It is read at build/request time from environment variables — nothing about the license server lives in this repo. See `.env.example` for the keys and set them in Vercel under Settings → Environment Variables, or as GitHub Actions secrets if a workflow ever publishes them:
+The first hero stat shows the deduplicated count of registered device serials, minus revoked ones. Nothing about the VPS lives in this repo.
 
-- `RAIRIN_ACTIVE_DEVICES` — plain integer
-- `RAIRIN_STATS_UPDATED_AT` — date shown beside the figure
-- `RAIRIN_STATS_URL` — optional JSON endpoint returning `{ "unique": <int> }`, re-read every 15 minutes and preferred over the static count
-- `RAIRIN_STATS_TOKEN` — optional bearer token for that endpoint
+Resolution order in `src/lib/licenseStats.ts`:
 
-With none of them set, that tile falls back to the device-profile count, so the page never shows a placeholder or an invented number.
+1. `RAIRIN_STATS_URL` (+ optional `RAIRIN_STATS_TOKEN`) — JSON endpoint returning `{ "active": <int> }`, re-read every 5 minutes, no redeploy needed
+2. `RAIRIN_ACTIVE_DEVICES` — manual integer override
+3. `src/data/license-stats.json` — snapshot refreshed over SSH by `.github/workflows/license-stats.yml`
+
+With none of them usable, that tile falls back to the device-profile count, so the page never shows a placeholder or an invented number.
+
+### Scheduled refresh over SSH
+
+`.github/workflows/license-stats.yml` runs every 3 hours (and on demand via *Actions → Refresh licence stats → Run workflow*). It calls `scripts/fetch_license_stats.py`, which SSHes to the VPS, runs the counter, and rewrites the snapshot. Vercel redeploys on the resulting commit.
+
+Repository secrets — *Settings → Secrets and variables → Actions*:
+
+| Secret | Required | Purpose |
+|---|---|---|
+| `VPS_HOST` | yes | IP or hostname |
+| `VPS_USER` | yes | SSH user |
+| `VPS_HOST_KEY` | yes | `known_hosts` line, pins the server identity |
+| `VPS_SSH_KEY` | preferred | private key contents |
+| `VPS_PASSWORD` | fallback | used only when no key is set |
+| `VPS_PORT` | no | defaults to 22 |
+| `VPS_SSH_KEY_PASSPHRASE` | no | if the key is encrypted |
+| `RAIRIN_STATS_COMMAND` | no | defaults to `/usr/local/bin/rairin-license-count` |
+| `RAIRIN_REMOTE_DIR` | no | data dir for the inline fallback, defaults to `~/rairin` |
+
+Get the host key line once:
+
+```bash
+pip install paramiko
+VPS_HOST=... VPS_PORT=... VPS_USER=... VPS_PASSWORD=... \
+  python3 scripts/fetch_license_stats.py --print-host-key
+```
+
+### VPS-side counter
+
+`scripts/vps/rairin-license-count` reports counts only — no serials, paths, or credentials. Install it on the server so the SSH key can be locked to it:
+
+```bash
+sudo install -m 0755 rairin-license-count /usr/local/bin/rairin-license-count
+RAIRIN_DIR=$HOME/rairin /usr/local/bin/rairin-license-count
+```
+
+Then restrict the deploy key in `~/.ssh/authorized_keys`:
+
+```
+command="/usr/local/bin/rairin-license-count",restrict <key type> <key> license-stats
+```
+
+That key can then do nothing but print the counts, even if the token leaks. If the counter is not installed, the script falls back to an inline read-only snippet over `python3 -`, which needs an unrestricted key.
 
 ## Local development
 

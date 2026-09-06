@@ -43,3 +43,7 @@ next-env.d.ts
 
 # local screenshot originals
 .originals/
+
+# python
+__pycache__/
+*.pyc
