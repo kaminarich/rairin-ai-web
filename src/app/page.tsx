@@ -140,6 +140,14 @@ const icons: Record<string, ReactNode> = {
       <path d="M19 13.6v5.9A1.5 1.5 0 0 1 17.5 21h-13A1.5 1.5 0 0 1 3 19.5v-13A1.5 1.5 0 0 1 4.5 5h5.9" />
     </svg>
   ),
+  qris: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7" rx="1.4" />
+      <rect x="14" y="3" width="7" height="7" rx="1.4" />
+      <rect x="3" y="14" width="7" height="7" rx="1.4" />
+      <path d="M14 14h3v3M20.5 14v0M14 20.5h0M17 20.5h0M20.5 17v3.5" />
+    </svg>
+  ),
 };
 
 const FEATURES: { key: string; title: string; text: string; seg?: boolean }[] = [
@@ -209,18 +217,18 @@ const LICENSE_POINTS = [
   "Module package and install guidance sent on Telegram",
 ];
 
-type PayMethod = { key: string; name: string; value: string; copy?: boolean; href?: string };
+type PayMethod = { key: string; name: string; value: string; copy?: boolean; href?: string; min: string };
 
 const PAY_ID: PayMethod[] = [
-  { key: "bank", name: "Bank — Seabank", value: "901621586195", copy: true },
-  { key: "wallet", name: "E-Wallet — GoPay", value: "085117135623", copy: true },
+  { key: "bank", name: "Bank — Seabank", value: "901621586195", copy: true, min: "Rp 10.000" },
+  { key: "wallet", name: "E-Wallet — GoPay", value: "085117135623", copy: true, min: "Rp 10.000" },
 ];
 
 const PAY_INTL: PayMethod[] = [
-  { key: "paypal", name: "PayPal", value: "@kaminarich", copy: true, href: PAYPAL },
-  { key: "binance", name: "Binance ID", value: "859078904", copy: true },
-  { key: "gift", name: "Trakteer", value: "trakteer.id/kaminarich", href: TRAKTEER },
-  { key: "coffee", name: "Ko-fi", value: "ko-fi.com/kaminarich_here", href: KOFI },
+  { key: "paypal", name: "PayPal", value: "@kaminarich", copy: true, href: PAYPAL, min: "USD 2" },
+  { key: "binance", name: "Binance ID", value: "859078904", copy: true, min: "Rp 20.000 / $1.30" },
+  { key: "gift", name: "Trakteer", value: "trakteer.id/kaminarich", href: TRAKTEER, min: "Rp 20.000 / $1.30" },
+  { key: "coffee", name: "Ko-fi", value: "ko-fi.com/kaminarich_here", href: KOFI, min: "Rp 20.000 / $1.30" },
 ];
 
 export default async function Page() {
@@ -514,7 +522,7 @@ export default async function Page() {
                     <b>Rp 10.000</b>
                     <i>≈ USD 1.30</i>
                   </div>
-                  <p className="price-note">Minimum donation · one device · one time</p>
+                  <p className="price-note">From Rp 10.000 via Seabank / GoPay · Rp 20.000 elsewhere · one device · one time</p>
 
                   <ul className="checks">
                     {LICENSE_POINTS.map((point) => (
@@ -585,8 +593,9 @@ export default async function Page() {
                 Payment methods
               </h2>
               <p className="lede" data-reveal data-delay="2">
-                Any method below works. Pay the minimum or more, keep the receipt, then send it with your device serial
-                number on Telegram.
+                Seabank and GoPay start at Rp 10.000. Trakteer, Binance and Ko-fi have a minimum of Rp 20.000 (about USD
+                1.30), and PayPal is USD 2 to cover its higher fees. Pay the minimum or more, keep the receipt, then send
+                it with your device serial number on Telegram.
               </p>
             </div>
 
@@ -601,7 +610,9 @@ export default async function Page() {
                     <div className="well pay-row" key={m.value}>
                       <span className="socket socket--sm socket--dim">{icons[m.key]}</span>
                       <div className="pay-meta">
-                        <div className="pay-name">{m.name}</div>
+                        <div className="pay-name">
+                          {m.name} <span className="pay-min">min {m.min}</span>
+                        </div>
                         <div className="pay-value">{m.value}</div>
                       </div>
                       <div className="pay-actions">
@@ -609,20 +620,55 @@ export default async function Page() {
                       </div>
                     </div>
                   ))}
+
+                  <div className="well qris-note">
+                    <div className="qris-head">
+                      <span className="socket socket--sm socket--dim">{icons.qris}</span>
+                      <div className="pay-meta">
+                        <div className="pay-name">
+                          QRIS — via GoPay top-up <span className="pay-min">min Rp 10.000</span>
+                        </div>
+                        <div className="pay-value">Any QRIS app · scan &amp; pay</div>
+                      </div>
+                    </div>
+                    <ol className="qris-steps">
+                      <li>
+                        Open{" "}
+                        <a href="https://hotelmurah.com" target="_blank" rel="noreferrer noopener">
+                          hotelmurah.com
+                        </a>
+                      </li>
+                      <li>
+                        Choose <strong>Top Up GoPay</strong>
+                      </li>
+                      <li>
+                        Enter my GoPay number <strong>085117135623</strong>
+                      </li>
+                      <li>
+                        Choose <strong>Rp 10.000</strong>
+                      </li>
+                      <li>
+                        Pick the <strong>QRIS</strong> method — a QR appears, scan it with any bank or e-wallet app to
+                        pay
+                      </li>
+                    </ol>
+                  </div>
                 </div>
               </div>
 
               <div className="panel pay-group" data-reveal="right" data-delay="2">
                 <h3>
                   <span className="led led--accent" />
-                  International
+                  International &amp; others
                 </h3>
                 <div className="pay-list">
                   {PAY_INTL.map((m) => (
                     <div className="well pay-row" key={m.value}>
                       <span className="socket socket--sm socket--dim">{icons[m.key]}</span>
                       <div className="pay-meta">
-                        <div className="pay-name">{m.name}</div>
+                        <div className="pay-name">
+                          {m.name} <span className="pay-min">min {m.min}</span>
+                        </div>
                         <div className="pay-value">{m.value}</div>
                       </div>
                       <div className="pay-actions">
@@ -663,8 +709,8 @@ export default async function Page() {
                 <span className="socket socket--sm socket--dim">{icons.coin}</span>
                 <h3>Donate</h3>
                 <p>
-                  Send at least Rp 10.000, or about USD 1.30, through any method listed above. Keep the transfer receipt
-                  open.
+                  Seabank or GoPay from Rp 10.000; Trakteer, Binance or Ko-fi from Rp 20.000 / USD 1.30; PayPal from USD
+                  2. Prefer QRIS? Top up my GoPay Rp 10.000 through hotelmurah.com. Keep the receipt.
                 </p>
               </article>
 
