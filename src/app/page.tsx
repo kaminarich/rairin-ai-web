@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import CopyButton from "@/components/CopyButton";
 import ScrollReveal from "@/components/ScrollReveal";
 import ModeSelector from "@/components/ModeSelector";
+import QrisCheckout from "@/components/QrisCheckout";
+import { LanguageProvider, LanguageToggle, T } from "@/components/Language";
 import { formatCount, getLicenseStats } from "@/lib/licenseStats";
 
 const TELEGRAM = "https://t.me/kaminarich";
@@ -234,7 +236,7 @@ const PAY_INTL: PayMethod[] = [
 export default async function Page() {
   const { activeDevices, updatedAt, live } = await getLicenseStats();
   return (
-    <>
+    <LanguageProvider>
       <ScrollReveal />
       <header className="topbar">
         <div className="topbar-inner">
@@ -245,15 +247,16 @@ export default async function Page() {
             </span>
           </a>
           <nav className="nav-links">
-            <a href="#preview">Preview</a>
-            <a href="#features">Features</a>
-            <a href="#compatibility">Compatibility</a>
-            <a href="#license">License</a>
-            <a href="#how-to-buy">How to Buy</a>
-            <a href="#contact">Contact</a>
+            <a href="#preview"><T en="Preview" id="Pratinjau" /></a>
+            <a href="#features"><T en="Features" id="Fitur" /></a>
+            <a href="#compatibility"><T en="Compatibility" id="Kompatibilitas" /></a>
+            <a href="#license"><T en="License" id="Lisensi" /></a>
+            <a href="#how-to-buy"><T en="How to Buy" id="Cara Membeli" /></a>
+            <a href="#contact"><T en="Contact" id="Kontak" /></a>
           </nav>
+          <LanguageToggle />
           <a className="btn btn--accent btn--sm" href="#license">
-            GET LICENSED
+            <T en="GET LICENSED" id="BELI LISENSI" />
           </a>
         </div>
       </header>
@@ -270,17 +273,15 @@ export default async function Page() {
                 RaiRin<span className="ai">-AI</span>
               </h1>
               <p className="lede" data-reveal data-delay="2">
-                A root module that puts an AI assistant and a deep game booster on the same panel. Tune performance per
-                game, present your device as flagship hardware, and drive all of it from a floating dashboard that never
-                leaves your match.
+                <T en="A root module that puts an AI assistant and a deep game booster on the same panel. Tune performance per game, present your device as flagship hardware, and control it from a floating dashboard during play." id="Modul root yang menyatukan asisten AI dan game booster mendalam dalam satu panel. Atur performa per game, tampilkan perangkat sebagai perangkat flagship, dan kendalikan semuanya dari dashboard mengambang saat bermain." />
               </p>
               <div className="cta-row" data-reveal data-delay="3">
                 <a className="btn btn--accent" href="#license">
-                  Get licensed — Rp 10.000
+                  <T en="Buy license — from Rp 10.000" id="Beli lisensi — mulai Rp 10.000" />
                   {icons.arrow}
                 </a>
                 <a className="btn" href="#features">
-                  Explore features
+                  <T en="Explore features" id="Lihat fitur" />
                 </a>
               </div>
             </div>
@@ -503,26 +504,24 @@ export default async function Page() {
             <div className="section-head">
               <p className="kicker" data-reveal>
                 <span className="led led--accent" />
-                Licensing
+                <T en="Licensing" id="Lisensi" />
               </p>
               <h2 className="title" data-reveal data-delay="1">
-                Pay once. Licensed for good.
+                <T en="Pay once. Licensed for good." id="Bayar sekali. Lisensi permanen." />
               </h2>
               <p className="lede" data-reveal data-delay="2">
-                A single donation unlocks RaiRin-AI permanently on one device. The license is registered against that
-                device serial number, so it survives reinstalls and module updates.
+                <T en="One purchase unlocks RaiRin-AI permanently on one device. License is registered to that device serial, so it survives reinstalls and module updates." id="Satu pembelian membuka RaiRin-AI secara permanen pada satu perangkat. Lisensi didaftarkan ke serial perangkat tersebut sehingga tetap berlaku setelah instal ulang dan pembaruan modul." />
               </p>
             </div>
 
             <div className="panel screws" data-reveal="scale">
               <div className="license-grid">
                 <div data-reveal="left" data-delay="1">
-                  <span className="badge">Permanent license</span>
+                  <span className="badge"><T en="Permanent license" id="Lisensi permanen" /></span>
                   <div className="price">
                     <b>Rp 10.000</b>
-                    <i>≈ USD 1.30</i>
                   </div>
-                  <p className="price-note">From Rp 10.000 via Seabank / GoPay · Rp 20.000 elsewhere · one device · one time</p>
+                  <p className="price-note"><T en="From Rp 10.000 via Seabank / GoPay · direct QRIS Rp 15.000 · one device · one time" id="Mulai Rp 10.000 via Seabank / GoPay · QRIS langsung Rp 15.000 · satu perangkat · satu kali" /></p>
 
                   <ul className="checks">
                     {LICENSE_POINTS.map((point) => (
@@ -535,17 +534,17 @@ export default async function Page() {
 
                   <div className="cta-row" style={{ justifyContent: "flex-start", marginTop: 0 }}>
                     <a className="btn btn--accent" href="#payment">
-                      Choose a payment method
+                      <T en="Choose a payment method" id="Pilih metode pembayaran" />
                       {icons.arrow}
                     </a>
                     <a className="btn" href="#how-to-buy">
-                      How activation works
+                      <T en="How activation works" id="Cara kerja aktivasi" />
                     </a>
                   </div>
                 </div>
 
                 <div className="well req" data-reveal="right" data-delay="3">
-                  <h4>Before you pay</h4>
+                  <h4><T en="Before you pay" id="Sebelum membayar" /></h4>
                   <ul>
                     <li>
                       <span className="led" />
@@ -571,8 +570,7 @@ export default async function Page() {
                     <li>
                       <span className="led led--accent" />
                       <span>
-                        <strong>One license, one device.</strong> Extra devices need their own donation, each bound to
-                        its own serial.
+                        <strong><T en="One license, one device." id="Satu lisensi, satu perangkat." /></strong> <T en="Extra devices need their own purchase, each bound to its own serial." id="Perangkat tambahan memerlukan pembelian sendiri dan terikat ke serial masing-masing." />
                       </span>
                     </li>
                   </ul>
@@ -587,15 +585,13 @@ export default async function Page() {
             <div className="section-head">
               <p className="kicker" data-reveal>
                 <span className="led" />
-                Where to pay
+                <T en="Where to pay" id="Tempat membayar" />
               </p>
               <h2 className="title" data-reveal data-delay="1">
-                Payment methods
+                <T en="Payment methods" id="Metode pembayaran" />
               </h2>
               <p className="lede" data-reveal data-delay="2">
-                Seabank and GoPay start at Rp 10.000. Trakteer, Binance and Ko-fi have a minimum of Rp 20.000 (about USD
-                1.30), and PayPal is USD 2 to cover its higher fees. Pay the minimum or more, keep the receipt, then send
-                it with your device serial number on Telegram.
+                <T en="Direct QRIS costs Rp 15.000. Additional international payment methods remain available, with foreign currency shown for information only. QRIS verifies automatically; other methods need payment proof on Telegram." id="QRIS langsung berharga Rp 15.000. Metode pembayaran internasional tambahan tetap tersedia, dengan mata uang asing hanya ditampilkan sebagai informasi. QRIS diverifikasi otomatis; metode lain memerlukan bukti pembayaran melalui Telegram." />
               </p>
             </div>
 
@@ -626,32 +622,12 @@ export default async function Page() {
                       <span className="socket socket--sm socket--dim">{icons.qris}</span>
                       <div className="pay-meta">
                         <div className="pay-name">
-                          QRIS — via GoPay top-up <span className="pay-min">min Rp 10.000</span>
+                          QRIS — Midtrans <span className="pay-min">Rp 15.000</span>
                         </div>
-                        <div className="pay-value">Any QRIS app · scan &amp; pay</div>
+                        <div className="pay-value"><T en="Instant QR · five-minute expiry" id="QR instan · kedaluwarsa lima menit" /></div>
                       </div>
                     </div>
-                    <ol className="qris-steps">
-                      <li>
-                        Open{" "}
-                        <a href="https://hotelmurah.com" target="_blank" rel="noreferrer noopener">
-                          hotelmurah.com
-                        </a>
-                      </li>
-                      <li>
-                        Choose <strong>Top Up GoPay</strong>
-                      </li>
-                      <li>
-                        Enter my GoPay number <strong>085117135623</strong>
-                      </li>
-                      <li>
-                        Choose <strong>Rp 10.000</strong>
-                      </li>
-                      <li>
-                        Pick the <strong>QRIS</strong> method — a QR appears, scan it with any bank or e-wallet app to
-                        pay
-                      </li>
-                    </ol>
+                    <QrisCheckout />
                   </div>
                 </div>
               </div>
@@ -659,7 +635,7 @@ export default async function Page() {
               <div className="panel pay-group" data-reveal="right" data-delay="2">
                 <h3>
                   <span className="led led--accent" />
-                  International &amp; others
+                  <T en="International & others" id="Internasional & lainnya" />
                 </h3>
                 <div className="pay-list">
                   {PAY_INTL.map((m) => (
@@ -707,10 +683,9 @@ export default async function Page() {
               <article className="panel step" data-reveal data-delay="1">
                 <span className="step-num">1</span>
                 <span className="socket socket--sm socket--dim">{icons.coin}</span>
-                <h3>Donate</h3>
+                <h3><T en="Order" id="Pesan" /></h3>
                 <p>
-                  Seabank or GoPay from Rp 10.000; Trakteer, Binance or Ko-fi from Rp 20.000 / USD 1.30; PayPal from USD
-                  2. Prefer QRIS? Top up my GoPay Rp 10.000 through hotelmurah.com. Keep the receipt.
+                  <T en="Direct QRIS is Rp 15.000. Enter your serial first, accept the policies, then scan within five minutes. International methods remain additional options; keep receipts for non-QRIS payments." id="QRIS langsung berharga Rp 15.000. Masukkan serial terlebih dahulu, setujui kebijakan, lalu pindai dalam lima menit. Metode internasional tetap tersedia sebagai pilihan tambahan; simpan bukti pembayaran non-QRIS." />
                 </p>
               </article>
 
@@ -738,7 +713,8 @@ export default async function Page() {
                 <span className="socket socket--sm socket--dim">{icons.proof}</span>
                 <h3>Send proof</h3>
                 <p>
-                  Message @kaminarich on Telegram with a screenshot of your payment and the serial number from step two.
+                  QRIS redirects you with a verified payment ID and serial after payment. For other methods, message
+                  @kaminarich with a payment screenshot and serial number.
                 </p>
                 <a className="btn btn--sm" href={TELEGRAM} target="_blank" rel="noreferrer noopener">
                   {icons.telegram}
@@ -764,17 +740,19 @@ export default async function Page() {
             <div className="panel screws contact-panel" data-reveal="scale">
               <p className="kicker">
                 <span className="led led--live" />
-                Contact
+                <T en="Business contact" id="Kontak bisnis" />
               </p>
-              <h2 className="title">Talk to the developer directly</h2>
+              <h2 className="title"><T en="Contact seller directly" id="Hubungi penjual langsung" /></h2>
               <p className="lede">
-                Licensing, activation, install help and module updates all run through Telegram. Send your payment proof
-                and device serial number, and your license gets registered by hand.
+                <T en="KAMINARICH provides product orders, activation, installation support, and updates through Telegram. Support hours: daily, 09:00-21:00 WIB." id="KAMINARICH melayani pemesanan produk, aktivasi, bantuan instalasi, dan pembaruan melalui Telegram. Jam dukungan: setiap hari, 09.00-21.00 WIB." />
               </p>
               <div className="cta-row">
                 <a className="btn btn--accent" href={TELEGRAM} target="_blank" rel="noreferrer noopener">
                   {icons.telegram}
                   Message on Telegram
+                </a>
+                <a className="btn" href="/policies">
+                  <T en="Terms & Policies" id="Syarat & Kebijakan" />
                 </a>
                 <a className="btn" href={GITHUB} target="_blank" rel="noreferrer noopener">
                   GitHub
@@ -807,15 +785,15 @@ export default async function Page() {
               </span>
             </a>
             <p>
-              Not affiliated with Qualcomm, MediaTek, Unisoc, Samsung Electronics or Google. Device and brand names are
-              trademarks of their respective owners. Requires a rooted Android device.
+              <T en="Not affiliated with Qualcomm, MediaTek, Unisoc, Samsung Electronics or Google. Device and brand names are trademarks of their respective owners. Requires a rooted Android device." id="Tidak berafiliasi dengan Qualcomm, MediaTek, Unisoc, Samsung Electronics, atau Google. Nama perangkat dan merek merupakan merek dagang pemiliknya. Memerlukan perangkat Android yang sudah di-root." />
             </p>
+            <p><a href="/policies"><T en="Terms · No-Refund Policy · Privacy · Business Contact" id="Syarat · Kebijakan Tanpa Pengembalian Dana · Privasi · Kontak Bisnis" /></a></p>
             <p style={{ fontFamily: "var(--mono)", fontSize: 11.5, letterSpacing: "0.1em" }}>
               © 2026 KAMINARICH
             </p>
           </div>
         </div>
       </footer>
-    </>
+    </LanguageProvider>
   );
 }

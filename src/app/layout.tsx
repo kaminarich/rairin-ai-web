@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import type { ReactNode } from "react";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 
 const title = "RaiRin-AI — AI-Integrated Root Module and Game Booster";
 const description =
-  "RaiRin-AI is a Magisk root module pairing an onboard AI assistant with a deep game booster engine. Snapdragon, MediaTek, Unisoc, Exynos and Tensor. Permanent per-device license from Rp 10.000 (about USD 1.30).";
+  "RaiRin-AI is a Magisk root module pairing an onboard AI assistant with a deep game booster engine. Snapdragon, MediaTek, Unisoc, Exynos and Tensor. Permanent per-device license from Rp 10.000.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://rairin-ai-web.vercel.app"),
@@ -50,7 +51,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <body>{children}</body>
