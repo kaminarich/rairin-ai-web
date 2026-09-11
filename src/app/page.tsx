@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import CopyButton from "@/components/CopyButton";
 import ScrollReveal from "@/components/ScrollReveal";
 import ModeSelector from "@/components/ModeSelector";
-import QrisCheckout from "@/components/QrisCheckout";
 import { LanguageProvider, LanguageToggle, T } from "@/components/Language";
 import { formatCount, getLicenseStats } from "@/lib/licenseStats";
 
@@ -152,37 +151,37 @@ const icons: Record<string, ReactNode> = {
   ),
 };
 
-const FEATURES: { key: string; title: string; text: string; seg?: boolean }[] = [
+const FEATURES: { key: string; title: { en: string; id: string }; text: { en: string; id: string }; seg?: boolean }[] = [
   {
     key: "ai",
-    title: "Ask RaiRin — Onboard AI",
-    text: "An AI assistant lives inside the booster dashboard. Ask it about your device, adjust the booster through plain conversation, and keep the whole exchange on your own keys.",
+    title: { en: "Ask RaiRin — Onboard AI", id: "Ask RaiRin — AI Terintegrasi" },
+    text: { en: "An AI assistant lives inside the booster dashboard. Ask it about your device, adjust the booster through plain conversation, and keep the whole exchange on your own keys.", id: "Asisten AI tersedia di dalam dashboard booster. Tanyakan tentang perangkat, atur booster melalui percakapan biasa, dan gunakan API key milik Anda sendiri." },
   },
   {
     key: "boost",
-    title: "Game Booster Engine",
-    text: "Four switchable profiles drive CPU behaviour through root-level scripts, applied per game. Switch mid-match from the overlay and the panel breathes one pulse of colour to confirm.",
+    title: { en: "Game Booster Engine", id: "Mesin Game Booster" },
+    text: { en: "Four switchable profiles drive CPU behaviour through root-level scripts, applied per game. Switch mid-match from the overlay and the panel breathes one pulse of colour to confirm.", id: "Empat profil mengatur perilaku CPU melalui skrip tingkat root untuk setiap game. Ganti mode saat bermain melalui overlay dan panel memberi konfirmasi visual." },
     seg: true,
   },
   {
     key: "spoof",
-    title: "Device Profile Spoofing",
-    text: "Present as one of 40+ flagship profiles, from the OnePlus 15 to the ROG Phone 9 Pro. Full build fingerprint, per-game injection, with optional CPU-level identity to match.",
+    title: { en: "Device Profile Spoofing", id: "Penyamaran Profil Perangkat" },
+    text: { en: "Present as one of 40+ flagship profiles, from the OnePlus 15 to the ROG Phone 9 Pro. Full build fingerprint, per-game injection, with optional CPU-level identity to match.", id: "Gunakan salah satu dari 40+ profil flagship, dari OnePlus 15 hingga ROG Phone 9 Pro. Mendukung build fingerprint lengkap, injeksi per game, dan identitas tingkat CPU opsional." },
   },
   {
     key: "soc",
-    title: "SoC-Aware Tuning",
-    text: "Snapdragon, MediaTek, Unisoc, Exynos and Tensor. Every profile carries matching SoC model and hardware strings, and tuning follows the silicon actually running the game.",
+    title: { en: "SoC-Aware Tuning", id: "Penyesuaian Sesuai SoC" },
+    text: { en: "Snapdragon, MediaTek, Unisoc, Exynos and Tensor. Every profile carries matching SoC model and hardware strings, and tuning follows the silicon actually running the game.", id: "Mendukung Snapdragon, MediaTek, Unisoc, Exynos, dan Tensor. Setiap profil membawa model SoC dan string perangkat keras yang sesuai, lalu penyesuaian mengikuti chip perangkat." },
   },
   {
     key: "overlay",
-    title: "In-Game Overlay",
-    text: "A floating dashboard with live FPS readouts, gauges and quick controls, layered over any game. Touches pass straight through when you only want the numbers.",
+    title: { en: "In-Game Overlay", id: "Overlay Dalam Game" },
+    text: { en: "A floating dashboard with live FPS readouts, gauges and quick controls, layered over any game. Touches pass straight through when you only want the numbers.", id: "Dashboard mengambang dengan FPS langsung, indikator, dan kontrol cepat di atas game. Sentuhan dapat diteruskan saat Anda hanya ingin melihat data." },
   },
   {
     key: "root",
-    title: "Root-Native Depth",
-    text: "Installed as a real Magisk module under /data/adb, not a sandboxed app. Screen recorder, battery tweaks, colour boost and render switching ride along with it.",
+    title: { en: "Root-Native Depth", id: "Integrasi Root Native" },
+    text: { en: "Installed as a real Magisk module under /data/adb, not a sandboxed app. Screen recorder, battery tweaks, colour boost and render switching ride along with it.", id: "Terpasang sebagai modul Magisk asli di /data/adb, bukan aplikasi sandbox. Termasuk perekam layar, penyesuaian baterai, peningkatan warna, dan penggantian renderer." },
   },
 ];
 
@@ -209,14 +208,21 @@ const PROFILES = [
   "realme GT7 Pro",
 ];
 
-const EXTRAS = ["Screen recorder", "Battery tweaks", "Colour boost", "Render switching", "Crosshair overlay", "FPS meter"];
+const EXTRAS = [
+  { en: "Screen recorder", id: "Perekam layar" },
+  { en: "Battery tweaks", id: "Penyesuaian baterai" },
+  { en: "Colour boost", id: "Peningkatan warna" },
+  { en: "Render switching", id: "Penggantian renderer" },
+  { en: "Crosshair overlay", id: "Overlay crosshair" },
+  { en: "FPS meter", id: "Pengukur FPS" },
+];
 
 const LICENSE_POINTS = [
-  "Permanent license — no subscription, no expiry, no renewal",
-  "Bound to one device through its hardware serial number",
-  "Every booster mode and all 40+ spoof profiles unlocked",
-  "Ask RaiRin AI assistant enabled",
-  "Module package and install guidance sent on Telegram",
+  { en: "Permanent license — no subscription, no expiry, no renewal", id: "Lisensi permanen — tanpa langganan, kedaluwarsa, atau perpanjangan" },
+  { en: "Bound to one device through its hardware serial number", id: "Terikat ke satu perangkat melalui nomor serial perangkat keras" },
+  { en: "Every booster mode and all 40+ spoof profiles unlocked", id: "Semua mode booster dan 40+ profil spoof terbuka" },
+  { en: "Ask RaiRin AI assistant enabled", id: "Asisten AI Ask RaiRin aktif" },
+  { en: "Module package and install guidance sent on Telegram", id: "Paket modul dan panduan instalasi dikirim melalui Telegram" },
 ];
 
 type PayMethod = { key: string; name: string; value: string; copy?: boolean; href?: string; min: string };
@@ -267,7 +273,7 @@ export default async function Page() {
             <div className="hero-copy">
               <p className="kicker" data-reveal>
                 <span className="led led--live" />
-                Magisk module · root · Android
+                <T en="Magisk module · root · Android" id="Modul Magisk · root · Android" />
               </p>
               <h1 data-reveal data-delay="1">
                 RaiRin<span className="ai">-AI</span>
@@ -303,7 +309,7 @@ export default async function Page() {
                 {activeDevices === null ? (
                   <>
                     <b>40+</b>
-                    <span>Device profiles</span>
+                    <span><T en="Device profiles" id="Profil perangkat" /></span>
                   </>
                 ) : (
                   <>
@@ -311,28 +317,28 @@ export default async function Page() {
                       <span className="led led--live" />
                       {formatCount(activeDevices)}
                     </b>
-                    <span>Active licensed users</span>
+                    <span><T en="Active licensed users" id="Pengguna berlisensi aktif" /></span>
                   </>
                 )}
               </div>
               <div className="well stat" data-reveal data-delay="2">
                 <b>5</b>
-                <span>SoC families</span>
+                <span><T en="SoC families" id="Keluarga SoC" /></span>
               </div>
               <div className="well stat" data-reveal data-delay="3">
                 <b>4</b>
-                <span>Booster modes</span>
+                <span><T en="Booster modes" id="Mode booster" /></span>
               </div>
               <div className="well stat" data-reveal data-delay="4">
                 <b>1×</b>
-                <span>One-time payment</span>
+                <span><T en="One-time payment" id="Pembayaran sekali" /></span>
               </div>
             </div>
 
             {activeDevices === null ? null : (
               <p className="stats-note" data-reveal data-delay="5">
-                {live ? "Live from the licence server" : "Verified device serials on the licence server"}
-                {updatedAt ? ` · updated ${updatedAt}` : ""} · every entry is permanent and bound to one device
+                <T en={live ? "Live from the licence server" : "Verified device serials on the licence server"} id={live ? "Langsung dari server lisensi" : "Serial perangkat terverifikasi di server lisensi"} />
+                {updatedAt ? <T en={` · updated ${updatedAt}`} id={` · diperbarui ${updatedAt}`} /> : null}<T en=" · every entry is permanent and bound to one device" id=" · setiap entri permanen dan terikat ke satu perangkat" />
               </p>
             )}
           </div>
@@ -343,14 +349,13 @@ export default async function Page() {
             <div className="section-head">
               <p className="kicker" data-reveal>
                 <span className="led" />
-                On-device look
+                <T en="On-device look" id="Tampilan di perangkat" />
               </p>
               <h2 className="title" data-reveal data-delay="1">
-                The panel you actually operate
+                <T en="The panel you actually operate" id="Panel yang Anda gunakan" />
               </h2>
               <p className="lede" data-reveal data-delay="2">
-                Two surfaces ship with the module: a landscape dashboard for setup before you play, and a compact R-BOOST
-                overlay that rides on top of the game while you do.
+                <T en="Two surfaces ship with the module: a landscape dashboard for setup before play, and a compact R-BOOST overlay above the game." id="Modul menyediakan dua tampilan: dashboard lanskap untuk pengaturan sebelum bermain dan overlay R-BOOST ringkas di atas game." />
               </p>
             </div>
 
@@ -367,16 +372,15 @@ export default async function Page() {
                 </div>
                 <p className="shot-caption">
                   <span className="led" />
-                  Dashboard
+                  <T en="Dashboard" id="Dasbor" />
                 </p>
                 <p>
-                  Pick a game, arm a spoof profile and set resolution, then launch. The top rail keeps CPU load, RAM,
-                  temperature and battery in view, with Tweak, Battery and Ask RaiRin one press away.
+                  <T en="Pick a game, select a spoof profile and resolution, then launch. CPU load, RAM, temperature, battery, Tweak, Battery, and Ask RaiRin remain visible." id="Pilih game, profil spoof, dan resolusi, lalu jalankan. Beban CPU, RAM, suhu, baterai, Tweak, Battery, dan Ask RaiRin tetap terlihat." />
                 </p>
                 <div className="shot-tags">
-                  <span className="chip chip--device">Game rail</span>
-                  <span className="chip chip--device">Spoof state</span>
-                  <span className="chip chip--device">Live telemetry</span>
+                   <span className="chip chip--device"><T en="Game rail" id="Daftar game" /></span>
+                   <span className="chip chip--device"><T en="Spoof state" id="Status spoof" /></span>
+                   <span className="chip chip--device"><T en="Live telemetry" id="Telemetri langsung" /></span>
                   <span className="chip chip--device">Ask RaiRin</span>
                 </div>
               </div>
@@ -396,13 +400,12 @@ export default async function Page() {
                   R-BOOST overlay
                 </p>
                 <p>
-                  Live FPS against refresh rate, CPU clock and temperature gauges, and all four modes latched in one
-                  strip — switchable mid-match without leaving the game.
+                  <T en="Live FPS, refresh rate, CPU clock, temperature gauges, and four modes in one strip, switchable without leaving the game." id="FPS langsung, refresh rate, clock CPU, indikator suhu, dan empat mode dalam satu baris yang dapat diganti tanpa keluar dari game." />
                 </p>
                 <div className="shot-tags">
                   <span className="chip chip--device">FPS · Hz</span>
-                  <span className="chip chip--device">Mode switch</span>
-                  <span className="chip chip--device">Clean · RAM · DND</span>
+                  <span className="chip chip--device"><T en="Mode switch" id="Ganti mode" /></span>
+                  <span className="chip chip--device"><T en="Clean · RAM · DND" id="Bersihkan · RAM · DND" /></span>
                 </div>
               </div>
             </div>
@@ -414,14 +417,13 @@ export default async function Page() {
             <div className="section-head">
               <p className="kicker" data-reveal>
                 <span className="led led--accent" />
-                What it does
+                <T en="What it does" id="Fungsinya" />
               </p>
               <h2 className="title" data-reveal data-delay="1">
-                Built like hardware, not a settings screen
+                <T en="Built like hardware, not a settings screen" id="Dibuat seperti perangkat keras, bukan layar pengaturan" />
               </h2>
               <p className="lede" data-reveal data-delay="2">
-                Every control in RaiRin-AI is machined into a single panel: debossed keys, lit from above, that cut
-                deeper when you press them. Underneath sits a root-level engine with real reach into the system.
+                <T en="Every RaiRin-AI control sits in one tactile panel. Underneath is a root-level engine with direct system access." id="Semua kontrol RaiRin-AI berada dalam satu panel taktil. Di bawahnya terdapat mesin tingkat root dengan akses langsung ke sistem." />
               </p>
             </div>
 
@@ -434,8 +436,8 @@ export default async function Page() {
                   data-delay={String((i % 3) + 1)}
                 >
                   <span className="socket">{icons[f.key]}</span>
-                  <h3>{f.title}</h3>
-                  <p>{f.text}</p>
+                   <h3><T en={f.title.en} id={f.title.id} /></h3>
+                   <p><T en={f.text.en} id={f.text.id} /></p>
 {f.seg ? <ModeSelector /> : null}
                 </article>
               ))}
@@ -448,14 +450,13 @@ export default async function Page() {
             <div className="section-head">
               <p className="kicker" data-reveal>
                 <span className="led" />
-                Compatibility
+                <T en="Compatibility" id="Kompatibilitas" />
               </p>
               <h2 className="title" data-reveal data-delay="1">
-                Five silicon families, one module
+                <T en="Five silicon families, one module" id="Lima keluarga chip, satu modul" />
               </h2>
               <p className="lede" data-reveal data-delay="2">
-                RaiRin-AI reads the SoC it is running on and tunes for it. Spoof profiles carry matching SoC model and
-                hardware strings, so a spoofed identity stays coherent with what the game sees.
+                <T en="RaiRin-AI detects the active SoC and tunes for it. Spoof profiles use matching SoC models and hardware strings for a consistent identity." id="RaiRin-AI mendeteksi SoC yang aktif dan menyesuaikannya. Profil spoof memakai model SoC dan string perangkat keras yang sesuai agar identitas tetap konsisten." />
               </p>
             </div>
 
@@ -472,7 +473,7 @@ export default async function Page() {
               <div className="divider" style={{ margin: "26px 0" }} />
 
               <p className="kicker" style={{ marginBottom: 14 }}>
-                Sample spoof profiles
+                <T en="Sample spoof profiles" id="Contoh profil spoof" />
               </p>
               <div className="chip-row">
                 {PROFILES.map((device) => (
@@ -480,18 +481,18 @@ export default async function Page() {
                     {device}
                   </span>
                 ))}
-                <span className="chip chip--device">+ more in the module</span>
+                <span className="chip chip--device"><T en="+ more in the module" id="+ lainnya di dalam modul" /></span>
               </div>
 
               <div className="divider" style={{ margin: "26px 0" }} />
 
               <p className="kicker" style={{ marginBottom: 14 }}>
-                Also included
+                <T en="Also included" id="Juga termasuk" />
               </p>
               <div className="chip-row">
                 {EXTRAS.map((extra) => (
-                  <span className="chip chip--device" key={extra}>
-                    {extra}
+                  <span className="chip chip--device" key={extra.en}>
+                    <T en={extra.en} id={extra.id} />
                   </span>
                 ))}
               </div>
@@ -525,9 +526,9 @@ export default async function Page() {
 
                   <ul className="checks">
                     {LICENSE_POINTS.map((point) => (
-                      <li key={point}>
+                      <li key={point.en}>
                         {icons.check}
-                        <span>{point}</span>
+                        <span><T en={point.en} id={point.id} /></span>
                       </li>
                     ))}
                   </ul>
@@ -549,22 +550,19 @@ export default async function Page() {
                     <li>
                       <span className="led" />
                       <span>
-                        <strong>A rooted Android device.</strong> Magisk or KernelSU, since RaiRin-AI installs as a
-                        system module.
+                        <T en={<><strong>A rooted Android device.</strong> Magisk or KernelSU, since RaiRin-AI installs as a system module.</>} id={<><strong>Perangkat Android yang sudah di-root.</strong> Magisk atau KernelSU diperlukan karena RaiRin-AI dipasang sebagai modul sistem.</>} />
                       </span>
                     </li>
                     <li>
                       <span className="led" />
                       <span>
-                        <strong>Termux from GitHub.</strong> The GitHub release build, granted root access — needed to
-                        read your device serial.
+                        <T en={<><strong>Termux from GitHub.</strong> GitHub release with root access is needed to read your device serial.</>} id={<><strong>Termux dari GitHub.</strong> Rilis GitHub dengan akses root diperlukan untuk membaca serial perangkat.</>} />
                       </span>
                     </li>
                     <li>
                       <span className="led" />
                       <span>
-                        <strong>Telegram.</strong> Payment proof and your serial go to @kaminarich, and activation comes
-                        back the same way.
+                        <T en={<><strong>Telegram.</strong> Send payment proof and serial to @kaminarich; activation returns there.</>} id={<><strong>Telegram.</strong> Kirim bukti pembayaran dan serial ke @kaminarich; aktivasi dikirim kembali melalui Telegram.</>} />
                       </span>
                     </li>
                     <li>
@@ -591,7 +589,7 @@ export default async function Page() {
                 <T en="Payment methods" id="Metode pembayaran" />
               </h2>
               <p className="lede" data-reveal data-delay="2">
-                <T en="Direct QRIS costs Rp 15.000. Additional international payment methods remain available, with foreign currency shown for information only. QRIS verifies automatically; other methods need payment proof on Telegram." id="QRIS langsung berharga Rp 15.000. Metode pembayaran internasional tambahan tetap tersedia, dengan mata uang asing hanya ditampilkan sebagai informasi. QRIS diverifikasi otomatis; metode lain memerlukan bukti pembayaran melalui Telegram." />
+                <T en="QRIS is temporarily available through Hotelmurah GoPay top-up while Midtrans verification is pending. Additional international payment methods remain available, with foreign currency shown for information only. Keep payment proof and send it with your device serial on Telegram." id="QRIS sementara tersedia melalui top up GoPay Hotelmurah selama verifikasi Midtrans berlangsung. Metode pembayaran internasional tambahan tetap tersedia, dengan mata uang asing hanya ditampilkan sebagai informasi. Simpan bukti pembayaran dan kirim bersama serial perangkat melalui Telegram." />
               </p>
             </div>
 
@@ -607,7 +605,7 @@ export default async function Page() {
                       <span className="socket socket--sm socket--dim">{icons[m.key]}</span>
                       <div className="pay-meta">
                         <div className="pay-name">
-                          {m.name} <span className="pay-min">min {m.min}</span>
+                           {m.name} <span className="pay-min"><T en="min" id="min" /> {m.min}</span>
                         </div>
                         <div className="pay-value">{m.value}</div>
                       </div>
@@ -622,12 +620,21 @@ export default async function Page() {
                       <span className="socket socket--sm socket--dim">{icons.qris}</span>
                       <div className="pay-meta">
                         <div className="pay-name">
-                          QRIS — Midtrans <span className="pay-min">Rp 15.000</span>
+                           QRIS — Hotelmurah <span className="pay-min">min Rp 10.000</span>
                         </div>
-                        <div className="pay-value"><T en="Instant QR · five-minute expiry" id="QR instan · kedaluwarsa lima menit" /></div>
+                         <div className="pay-value"><T en="GoPay top-up · scan with any QRIS app" id="Top up GoPay · pindai dengan aplikasi QRIS" /></div>
                       </div>
                     </div>
-                    <QrisCheckout />
+                    <ol className="qris-steps">
+                      <li><T en={<>Open <a href="https://www.hotelmurah.com/pulsa/top-up-gopay" target="_blank" rel="noreferrer noopener">hotelmurah.com</a></>} id={<>Buka <a href="https://www.hotelmurah.com/pulsa/top-up-gopay" target="_blank" rel="noreferrer noopener">hotelmurah.com</a></>} /></li>
+                      <li><T en={<>Enter GoPay number <strong>085117135623</strong></>} id={<>Masukkan nomor GoPay <strong>085117135623</strong></>} /></li>
+                      <li><T en={<>Choose at least <strong>Rp 10.000</strong>, then select <strong>QRIS</strong></>} id={<>Pilih minimal <strong>Rp 10.000</strong>, lalu pilih <strong>QRIS</strong></>} /></li>
+                      <li><T en="Pay before Hotelmurah QR expires, then save the receipt." id="Bayar sebelum QR Hotelmurah kedaluwarsa, lalu simpan bukti pembayaran." /></li>
+                    </ol>
+                    <a className="btn btn--accent btn--block" href="https://www.hotelmurah.com/pulsa/top-up-gopay" target="_blank" rel="noreferrer noopener">
+                      <T en="OPEN HOTELMURAH" id="BUKA HOTELMURAH" />
+                      {icons.external}
+                    </a>
                   </div>
                 </div>
               </div>
@@ -651,7 +658,7 @@ export default async function Page() {
                         {m.copy ? <CopyButton value={m.value} /> : null}
                         {m.href ? (
                           <a className="btn btn--sm" href={m.href} target="_blank" rel="noreferrer noopener">
-                            OPEN
+                            <T en="OPEN" id="BUKA" />
                             {icons.external}
                           </a>
                         ) : null}
@@ -669,13 +676,13 @@ export default async function Page() {
             <div className="section-head">
               <p className="kicker" data-reveal>
                 <span className="led led--accent" />
-                How to get it
+                <T en="How to get it" id="Cara mendapatkannya" />
               </p>
               <h2 className="title" data-reveal data-delay="1">
-                Four steps to an activated device
+                <T en="Four steps to an activated device" id="Empat langkah untuk aktivasi perangkat" />
               </h2>
               <p className="lede" data-reveal data-delay="2">
-                Registration is manual and handled personally, so your serial is only ever bound with your own consent.
+                <T en="Registration is handled manually, so your serial is bound only with your consent." id="Pendaftaran diproses manual sehingga serial hanya diikat dengan persetujuan Anda." />
               </p>
             </div>
 
@@ -685,17 +692,16 @@ export default async function Page() {
                 <span className="socket socket--sm socket--dim">{icons.coin}</span>
                 <h3><T en="Order" id="Pesan" /></h3>
                 <p>
-                  <T en="Direct QRIS is Rp 15.000. Enter your serial first, accept the policies, then scan within five minutes. International methods remain additional options; keep receipts for non-QRIS payments." id="QRIS langsung berharga Rp 15.000. Masukkan serial terlebih dahulu, setujui kebijakan, lalu pindai dalam lima menit. Metode internasional tetap tersedia sebagai pilihan tambahan; simpan bukti pembayaran non-QRIS." />
+                  <T en="For QRIS, top up GoPay number 085117135623 through Hotelmurah with at least Rp 10.000. Save the receipt. International methods remain additional options." id="Untuk QRIS, top up nomor GoPay 085117135623 melalui Hotelmurah minimal Rp 10.000. Simpan bukti pembayaran. Metode internasional tetap tersedia sebagai pilihan tambahan." />
                 </p>
               </article>
 
               <article className="panel step" data-reveal data-delay="2">
                 <span className="step-num">2</span>
                 <span className="socket socket--sm socket--dim">{icons.serial}</span>
-                <h3>Read your serial</h3>
+                <h3><T en="Read your serial" id="Baca serial perangkat" /></h3>
                 <p>
-                  Install Termux from its GitHub release, grant it root access, then run the command below and copy the
-                  output.
+                  <T en="Install Termux from its GitHub release, grant root access, run the command below, then copy the output." id="Pasang Termux dari rilis GitHub, berikan akses root, jalankan perintah berikut, lalu salin hasilnya." />
                 </p>
                 <div className="well cmd">
                   <code>
@@ -711,10 +717,9 @@ export default async function Page() {
               <article className="panel step" data-reveal data-delay="3">
                 <span className="step-num">3</span>
                 <span className="socket socket--sm socket--dim">{icons.proof}</span>
-                <h3>Send proof</h3>
+                <h3><T en="Send proof" id="Kirim bukti" /></h3>
                 <p>
-                  QRIS redirects you with a verified payment ID and serial after payment. For other methods, message
-                  @kaminarich with a payment screenshot and serial number.
+                  <T en="Message @kaminarich with your payment screenshot and device serial number. Activation starts after manual payment validation." id="Kirim tangkapan layar pembayaran dan nomor serial perangkat ke @kaminarich. Aktivasi dimulai setelah validasi pembayaran manual." />
                 </p>
                 <a className="btn btn--sm" href={TELEGRAM} target="_blank" rel="noreferrer noopener">
                   {icons.telegram}
@@ -725,10 +730,9 @@ export default async function Page() {
               <article className="panel step" data-reveal data-delay="4">
                 <span className="step-num">4</span>
                 <span className="socket socket--sm socket--dim">{icons.check}</span>
-                <h3>Get activated</h3>
+                <h3><T en="Get activated" id="Dapatkan aktivasi" /></h3>
                 <p>
-                  Your serial is registered against a permanent license, and the module package plus install steps come
-                  straight back to you.
+                  <T en="Your serial receives a permanent license. Module package and installation steps are sent to you." id="Serial Anda menerima lisensi permanen. Paket modul dan langkah instalasi dikirim kepada Anda." />
                 </p>
               </article>
             </div>
@@ -749,7 +753,7 @@ export default async function Page() {
               <div className="cta-row">
                 <a className="btn btn--accent" href={TELEGRAM} target="_blank" rel="noreferrer noopener">
                   {icons.telegram}
-                  Message on Telegram
+                  <T en="Message on Telegram" id="Kirim pesan di Telegram" />
                 </a>
                 <a className="btn" href="/policies">
                   <T en="Terms & Policies" id="Syarat & Kebijakan" />

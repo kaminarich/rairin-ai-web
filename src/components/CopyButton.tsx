@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "@/components/Language";
 
 export default function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
+  const { language } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -28,9 +30,9 @@ export default function CopyButton({ value, label = "Copy" }: { value: string; l
       type="button"
       onClick={copy}
       className={`btn btn--sm${copied ? " copied" : ""}`}
-      aria-label={`Copy ${value}`}
+      aria-label={`${language === "id" ? "Salin" : "Copy"} ${value}`}
     >
-      {copied ? "COPIED" : label.toUpperCase()}
+      {copied ? (language === "id" ? "TERSALIN" : "COPIED") : (language === "id" && label === "Copy" ? "SALIN" : label.toUpperCase())}
     </button>
   );
 }
