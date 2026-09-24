@@ -72,6 +72,7 @@ declare global {
         expand: () => void;
         initData?: string;
         initDataUnsafe?: { user?: { first_name?: string; username?: string; photo_url?: string } };
+        sendData?: (data: string) => void;
         HapticFeedback?: { notificationOccurred: (k: string) => void };
         colorScheme?: string;
       };
@@ -89,6 +90,15 @@ export default function BiniShopPage() {
   const [liveCatalog, setLiveCatalog] = useState(false);
   const [me, setMe] = useState<MeUser | null>(null);
   const [initData, setInitData] = useState("");
+  const [snapshotAt, setSnapshotAt] = useState<string | null>(null);
+  const [copyCmd, setCopyCmd] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(0);
+
+  // Ticker so the "records Xs ago" line stays honest.
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 15000);
+    return () => clearInterval(t);
+  }, []);
   const [fatal, setFatal] = useState<Fatal | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -116,6 +126,8 @@ export default function BiniShopPage() {
         const jm = await rm.json();
         if (jm?.ok && jm?.user) {
           setMe({ ...jm.user, photo_url: tgPhoto || jm.user.photo_url });
+          setSnapshotAt(typeof jm.snapshot_at === "string" ? jm.snapshot_at : null);
+          setNowMs(Date.now());
           setFatal(null);
           return true;
         }
@@ -205,65 +217,83 @@ export default function BiniShopPage() {
     };
   }, [refreshMe]);
 
+  // --- orders travel page -> bot through Telegram itself (sendData).
+  // Zero inbound VPS setup needed. Falls back to a chat command + copy.
+  const sendOrder = useCallback((order: Record<string, unknown>, fallbackCmd: string): boolean => {
+    try {
+      const wa = window.Telegram?.WebApp;
+      if (wa && typeof wa.sendData === "function") {
+        wa.sendData(JSON.stringify(order));
+        return true;
+      }
+    } catch {
+      /* fall through to chat-command fallback */
+    }
+    setCopyCmd(fallbackCmd);
+    return false;
+  }, []);
+
+  const copyFallback = useCallback(async () => {
+    if (!copyCmd) return;
+    try {
+      await navigator.clipboard.writeText(copyCmd);
+      setMsg({ ok: true, text: `Copied ${copyCmd} — paste it in the bot chat.` });
+      haptic(true);
+    } catch {
+      setMsg({ ok: false, text: `Run this in the bot chat: ${copyCmd}` });
+      haptic(false);
+    }
+  }, [copyCmd, haptic]);
+
+  const manualRefresh = useCallback(async () => {
+    if (!initData || busy) return;
+    setBusy("refresh");
+    setMsg(null);
+    await refreshMe(initData, me?.photo_url || "");
+    setBusy(null);
+  }, [initData, busy, me, refreshMe]);
+
   // --- live-only actions (profile re-fetched after each, so stats stay true) ---
   const doBuy = useCallback(
     async (itemId: string) => {
-      if (!me || busy || !initData) return;
+      if (busy) return;
       setBusy(itemId);
       setMsg(null);
-      try {
-        const r = await fetch("/api/bini/buy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ initData, item_id: itemId }),
+      setCopyCmd(null);
+      const item = catalog.items.find((i) => i.id === itemId);
+      if (sendOrder({ action: "buy", item_id: itemId }, `/buy ${itemId}`)) {
+        setMsg({
+          ok: true,
+          text: `⚔ Order sent — ${item?.emoji || "🛒"} ${item?.name || itemId}. The bot confirms in chat; then ↻ refresh.`,
         });
-        const j = await r.json();
-        if (j?.ok) {
-          setMsg({ ok: true, text: j.message || "Purchased!" });
-          haptic(true);
-        } else {
-          setMsg({ ok: false, text: String(j.message || j.error || "Purchase failed.") });
-          haptic(false);
-        }
-      } catch (e) {
-        setMsg({ ok: false, text: `Request failed: ${e instanceof Error ? e.message : e}` });
+        haptic(true);
+      } else {
+        setMsg({ ok: false, text: "Direct orders unavailable here — run the command in chat instead 👇" });
         haptic(false);
       }
-      await refreshMe(initData, me.photo_url || "");
       setBusy(null);
     },
-    [me, busy, initData, haptic, refreshMe]
+    [busy, catalog, haptic, sendOrder]
   );
 
   const doConvert = useCallback(async () => {
-    if (!me || busy || !initData) return;
+    if (busy) return;
     const pts = parseInt(convertPts, 10);
     setBusy("convert");
     setMsg(null);
-    try {
-      const r = await fetch("/api/bini/convert", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData, points: pts }),
-      });
-      const j = await r.json();
-      if (j?.ok) {
-        setMsg({ ok: true, text: String(j.message || "Converted!") });
-        haptic(true);
-      } else {
-        setMsg({ ok: false, text: String(j.message || j.error || "Convert failed.") });
-        haptic(false);
-      }
-    } catch (e) {
-      setMsg({ ok: false, text: `Request failed: ${e instanceof Error ? e.message : e}` });
+    setCopyCmd(null);
+    if (sendOrder({ action: "convert", points: pts }, `/convert ${Number.isFinite(pts) ? pts : ""}`.trim())) {
+      setMsg({ ok: true, text: "💱 Order sent — the bot confirms in chat; then ↻ refresh." });
+      haptic(true);
+    } else {
+      setMsg({ ok: false, text: "Direct orders unavailable here — run the command in chat instead 👇" });
       haptic(false);
     }
-    await refreshMe(initData, me.photo_url || "");
     setBusy(null);
-  }, [me, busy, initData, convertPts, haptic, refreshMe]);
+  }, [busy, convertPts, haptic, sendOrder]);
 
   const doSalvage = useCallback(async () => {
-    if (!me || busy || !initData) return;
+    if (busy) return;
     const bid = salvageId.trim();
     if (!bid) {
       setMsg({ ok: false, text: "Enter a BINI ID to salvage." });
@@ -272,28 +302,17 @@ export default function BiniShopPage() {
     if (!window.confirm(`Burn BINI #${bid} for MANA? This is permanent.`)) return;
     setBusy("salvage");
     setMsg(null);
-    try {
-      const r = await fetch("/api/bini/salvage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData, bini_id: bid }),
-      });
-      const j = await r.json();
-      if (j?.ok) {
-        setMsg({ ok: true, text: `Salvaged BINI #${bid} → +${j.gained} MANA 🔮` });
-        haptic(true);
-        setSalvageId("");
-      } else {
-        setMsg({ ok: false, text: String(j.error || j.message || "Salvage failed.") });
-        haptic(false);
-      }
-    } catch (e) {
-      setMsg({ ok: false, text: `Request failed: ${e instanceof Error ? e.message : e}` });
+    setCopyCmd(null);
+    if (sendOrder({ action: "salvage", bini_id: bid }, `/salvage ${bid}`)) {
+      setMsg({ ok: true, text: `♻️ Order sent for BINI #${bid} — the bot confirms in chat; then ↻ refresh.` });
+      haptic(true);
+      setSalvageId("");
+    } else {
+      setMsg({ ok: false, text: "Direct orders unavailable here — run the command in chat instead 👇" });
       haptic(false);
     }
-    await refreshMe(initData, me.photo_url || "");
     setBusy(null);
-  }, [me, busy, initData, salvageId, haptic, refreshMe]);
+  }, [busy, salvageId, haptic, sendOrder]);
 
   const convertPreview = useMemo(() => {
     const pts = parseInt(convertPts, 10);
@@ -301,6 +320,15 @@ export default function BiniShopPage() {
     if (!Number.isFinite(pts) || pts <= 0) return "—";
     return `≈ ${Math.floor(pts / rate)} MANA`;
   }, [convertPts, catalog]);
+
+  const snapshotAge = useMemo(() => {
+    if (!snapshotAt || !nowMs) return "";
+    const s = Math.max(0, Math.floor((nowMs - new Date(snapshotAt).getTime()) / 1000));
+    if (Number.isNaN(s)) return "";
+    if (s < 10) return "records just now";
+    if (s < 60) return `records ${s}s ago`;
+    return `records ${Math.floor(s / 60)}m ago`;
+  }, [snapshotAt, nowMs]);
 
   // --- render: loading / fatal / live ---
   if (loading) {
@@ -333,8 +361,13 @@ export default function BiniShopPage() {
           {fatal?.kind === "bot-unreachable" ? (
             <section className="bini-panel" style={{ marginTop: 16 }}>
               <p className="bini-note">
-                Admin checklist: on the VPS set <b>BINI_API_ENABLED=1</b>, expose 127.0.0.1:5600
-                with HTTPS, and set Vercel env <b>BINI_API_URL</b> to that public URL.
+                {fatal.detail.includes("No record for thee")
+                  ? "Use /getbini in the bot first, then ↻ try again."
+                  : fatal.detail.includes("No records published")
+                    ? "The bot publishes records every couple of minutes while running — wait a bit, then ↻ try again. (VPS: BINI_SNAPSHOT_ENABLED=1 in .env + restart.)"
+                    : fatal.detail.includes("TELEGRAM_BOT_TOKEN")
+                      ? "Server misconfigured — admin: set TELEGRAM_BOT_TOKEN on Vercel and redeploy."
+                      : "Check thy connection and ↻ try again."}
               </p>
               <div className="bini-row">
                 <button
@@ -369,6 +402,18 @@ export default function BiniShopPage() {
           <p className="bini-sub">Trade rank &amp; relics for MANA. Arm thy hunter for battle.</p>
           <div>
             <span className="bini-live bini-live--on">● live — thy true wallet &amp; stats</span>
+          </div>
+          <div className="bini-row" style={{ justifyContent: "center", alignItems: "center" }}>
+            {snapshotAge ? <span className="bini-note">{snapshotAge}</span> : null}
+            <button
+              className="bini-buy"
+              style={{ width: "auto", marginTop: 0, padding: "8px 16px", fontSize: 14 }}
+              type="button"
+              disabled={busy === "refresh"}
+              onClick={manualRefresh}
+            >
+              {busy === "refresh" ? "… " : "↻ Refresh"}
+            </button>
           </div>
         </header>
 
@@ -447,6 +492,20 @@ export default function BiniShopPage() {
             </button>
           ))}
         </nav>
+
+        {copyCmd ? (
+          <div className="bini-row" style={{ marginTop: 10 }}>
+            <input className="bini-input" value={copyCmd} readOnly aria-label="Chat command" />
+            <button
+              className="bini-buy"
+              style={{ width: "auto", marginTop: 0 }}
+              type="button"
+              onClick={copyFallback}
+            >
+              Copy
+            </button>
+          </div>
+        ) : null}
 
         {tab === "shop" ? (
           <section className="bini-panel">
