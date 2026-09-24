@@ -1,0 +1,70 @@
+{
+  "rate": 5,
+  "rateLabel": "5 rank pts = 1 MANA (one-way, min 5 pts)",
+  "minConvert": 5,
+  "charmBonus": 1.25,
+  "rarity": {
+    "common": { "mana": 20, "tags": ["neko", "kemonomimi", "hentai", "boobs", "ass", "thigh", "feet"] },
+    "uncommon": { "mana": 35, "tags": ["paizuri", "hyuri", "hthigh", "hmidriff", "hboobs", "hass", "gonewild"] },
+    "rare": { "mana": 60, "tags": ["tentacle", "lewdneko", "hkitsune", "anal", "blowjob"] },
+    "mythic": { "mana": 100, "tags": ["4k", "hentai_anal"] }
+  },
+  "items": [
+    {
+      "id": "rank_guard_24h",
+      "name": "Rank Protection 24h",
+      "emoji": "🛡️",
+      "cost": 80,
+      "desc": "No rank-point swings against you for 24h. BINI can still change hands."
+    },
+    {
+      "id": "rank_guard_7d",
+      "name": "Rank Protection 7d",
+      "emoji": "🛡️",
+      "cost": 300,
+      "desc": "No rank-point swings against you for 7 days."
+    },
+    {
+      "id": "attack_boost",
+      "name": "Attack Boost +10%",
+      "emoji": "⚔️",
+      "cost": 120,
+      "desc": "+10% battle/steal win chance on your next 10 attacks."
+    },
+    {
+      "id": "defense_boost",
+      "name": "Defense Boost +10%",
+      "emoji": "🧱",
+      "cost": 120,
+      "desc": "Attackers lose 10% win chance on your next 10 defenses."
+    },
+    {
+      "id": "aegis_shield",
+      "name": "Aegis Shield",
+      "emoji": "🔰",
+      "cost": 150,
+      "desc": "Blocks 1 full BINI loss (battle/steal). Stacks up to 3."
+    },
+    {
+      "id": "swift_summon",
+      "name": "Swift Summon 24h",
+      "emoji": "⚡",
+      "cost": 100,
+      "desc": "/getbini cooldown 60m → 30m for 24h."
+    },
+    {
+      "id": "mana_charm",
+      "name": "Mana Charm 24h",
+      "emoji": "🌀",
+      "cost": 90,
+      "desc": "+25% MANA from salvaging for 24h."
+    },
+    {
+      "id": "second_wind",
+      "name": "Second Wind",
+      "emoji": "🎟️",
+      "cost": 60,
+      "desc": "1 instant /getbini bypassing cooldown (use /wind). Stacks up to 3."
+    }
+  ]
+}
