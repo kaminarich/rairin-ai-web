@@ -82,7 +82,7 @@ declare global {
 
 type Fatal =
   | { kind: "outside-telegram" }
-  | { kind: "bot-unreachable"; detail: string };
+  | { kind: "bot-unreachable"; detail: string; uid?: string; published?: number };
 
 export default function BiniShopPage() {
   const [tab, setTab] = useState<"shop" | "salvage" | "convert">("shop");
@@ -134,6 +134,8 @@ export default function BiniShopPage() {
         setFatal({
           kind: "bot-unreachable",
           detail: String(jm?.error || `HTTP ${rm.status}`),
+          uid: typeof jm?.uid === "string" ? jm.uid : undefined,
+          published: typeof jm?.published === "number" ? jm.published : undefined,
         });
         return false;
       } catch (e) {
@@ -369,6 +371,11 @@ export default function BiniShopPage() {
                       ? "Server misconfigured — admin: set TELEGRAM_BOT_TOKEN on Vercel and redeploy."
                       : "Check thy connection and ↻ try again."}
               </p>
+              {fatal.uid || typeof fatal.published === "number" ? (
+                <p className="bini-note">
+                  thy id <code>{fatal.uid || "?"}</code> · {fatal.published ?? "?"} records published
+                </p>
+              ) : null}
               <div className="bini-row">
                 <button
                   className="bini-buy"

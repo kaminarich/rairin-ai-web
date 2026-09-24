@@ -150,7 +150,13 @@ export async function POST(
   const row = snap.users?.[uid];
   if (!row) {
     return NextResponse.json(
-      { ok: false, error: "No record for thee yet — use /getbini in the bot first, then refresh." },
+      {
+        ok: false,
+        error: "No record for thee yet — use /getbini in the bot first, then refresh.",
+        uid,
+        published: Object.keys(snap.users || {}).length,
+        snapshot_at: snap.updated_at,
+      },
       { status: 404 }
     );
   }
