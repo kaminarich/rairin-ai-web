@@ -76,7 +76,10 @@ type OrderEntry = {
 
 type OrderDoc = { updated_at: string | null; orders: Record<string, OrderEntry> };
 
-async function fetchGistFile<T>(name: string, revalidate = 30): Promise<T | null> {
+async function fetchGistFile<T>(name: string, revalidate = 30, force = false): Promise<T | null> {
+  const init: RequestInit & { next?: { revalidate: number } } = {};
+  if (force) init.cache = "no-store";
+  else init.next = { revalidate };
   // Authenticated API read first (reliable for secret gists).
   if (GIST_TOKEN) {
     try {
@@ -86,7 +89,7 @@ async function fetchGistFile<T>(name: string, revalidate = 30): Promise<T | null
           Accept: "application/vnd.github+json",
           "User-Agent": "rairin-ai-web",
         },
-        next: { revalidate },
+        ...init,
       });
       if (r.ok) {
         const j = await r.json();
@@ -101,7 +104,7 @@ async function fetchGistFile<T>(name: string, revalidate = 30): Promise<T | null
   try {
     const r = await fetch(
       `https://gist.githubusercontent.com/${GIST_USER}/${GIST_ID}/raw/${name}`,
-      { next: { revalidate } }
+      { ...init }
     );
     if (r.ok) return (await r.json()) as T;
   } catch {
@@ -110,16 +113,16 @@ async function fetchGistFile<T>(name: string, revalidate = 30): Promise<T | null
   return null;
 }
 
-async function fetchSnapshot(): Promise<{ updated_at: string | null; build?: string; users: Record<string, SnapUser> } | null> {
-  return fetchGistFile<{ updated_at: string | null; build?: string; users: Record<string, SnapUser> }>("bini-snapshot.json", 10);
+async function fetchSnapshot(force = false): Promise<{ updated_at: string | null; build?: string; users: Record<string, SnapUser> } | null> {
+  return fetchGistFile<{ updated_at: string | null; build?: string; users: Record<string, SnapUser> }>("bini-snapshot.json", 10, force);
 }
 
-async function readOrders(): Promise<OrderDoc | null> {
-  return fetchGistFile<OrderDoc>("bini-orders.json", 5);
+async function readOrders(force = false): Promise<OrderDoc | null> {
+  return fetchGistFile<OrderDoc>("bini-orders.json", 5, force);
 }
 
-async function readCollections(): Promise<{ updated_at: string | null; users: Record<string, [number, string, string][]> } | null> {
-  return fetchGistFile<{ updated_at: string | null; users: Record<string, [number, string, string][]> }>("bini-collections.json", 15);
+async function readCollections(force = false): Promise<{ updated_at: string | null; users: Record<string, [number, string, string][]> } | null> {
+  return fetchGistFile<{ updated_at: string | null; users: Record<string, [number, string, string][]> }>("bini-collections.json", 15, force);
 }
 
 async function writeOrders(doc: OrderDoc): Promise<boolean> {
@@ -190,7 +193,7 @@ export async function POST(
 
   // Gallery: viewer's own BINI as [id, name, image], newest first.
   if (action === "collection") {
-    const cols = await readCollections();
+    const cols = await readCollections(String(body.fresh) === "1" || body.fresh === true);
     if (!cols) {
       return NextResponse.json(
         { ok: false, error: "Gallery not published yet — the bot pushes it with the stats. Try again shortly." },
@@ -206,9 +209,9 @@ export async function POST(
     });
   }
 
-  // Order status poll: the bot flips pending -> done/failed.
+  // Order status poll: always force-fresh (tiny file, must not lag).
   if (action === "order-status") {
-    const doc = await readOrders();
+    const doc = await readOrders(true);
     const entry = doc?.orders?.[String(body.order_id || "")];
     if (!entry || entry.uid !== uid) {
       return NextResponse.json({ ok: false, error: "Order not found." }, { status: 404 });
@@ -272,7 +275,7 @@ export async function POST(
     } else {
       return NextResponse.json({ ok: false, error: "Unknown order." }, { status: 400 });
     }
-    const doc = (await readOrders()) || { updated_at: null, orders: {} };
+    const doc = (await readOrders(true)) || { updated_at: null, orders: {} };
     doc.orders[order.id] = order;
     doc.updated_at = new Date().toISOString();
     if (!(await writeOrders(doc))) {
@@ -281,7 +284,7 @@ export async function POST(
     return NextResponse.json({ ok: true, order_id: order.id });
   }
 
-  const snap = await fetchSnapshot();
+  const snap = await fetchSnapshot(String(body.fresh) === "1" || body.fresh === true);
   if (!snap) {
     return NextResponse.json(
       { ok: false, error: "No records published yet — the bot pushes them every couple of minutes. Try again shortly." },
