@@ -100,6 +100,7 @@ export default function BiniShopPage() {
   const [initData, setInitData] = useState("");
   const [snapshotAt, setSnapshotAt] = useState<string | null>(null);
   const [build, setBuild] = useState<string | null>(null);
+  const [gistMode, setGistMode] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [copyCmd, setCopyCmd] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(0);
@@ -132,7 +133,7 @@ export default function BiniShopPage() {
   }, []);
 
   const refreshMe = useCallback(
-    async (data: string, tgPhoto: string, fresh = false): Promise<boolean> => {
+    async (data: string, tgPhoto: string, fresh = false, minAt = 0): Promise<string | null> => {
       try {
         const rm = await fetch("/api/bini/me", {
           method: "POST",
@@ -142,12 +143,18 @@ export default function BiniShopPage() {
         });
         const jm = await rm.json();
         if (jm?.ok && jm?.user) {
-          setMe({ ...jm.user, photo_url: tgPhoto || jm.user.photo_url });
-          setSnapshotAt(typeof jm.snapshot_at === "string" ? jm.snapshot_at : null);
+          const at = typeof jm.snapshot_at === "string" ? jm.snapshot_at : null;
+          const t = at ? new Date(at).getTime() : NaN;
           setBuild(typeof jm.build === "string" ? jm.build : null);
+          setGistMode(typeof jm.gist_mode === "string" ? jm.gist_mode : null);
           setNowMs(Date.now());
           setFatal(null);
-          return true;
+          // Never let a stale snapshot overwrite newer (e.g. optimistic) numbers.
+          if (!at || Number.isNaN(t) || t >= minAt) {
+            setMe({ ...jm.user, photo_url: tgPhoto || jm.user.photo_url });
+            setSnapshotAt(at);
+          }
+          return at;
         }
         setFatal({
           kind: "bot-unreachable",
@@ -155,13 +162,13 @@ export default function BiniShopPage() {
           uid: typeof jm?.uid === "string" ? jm.uid : undefined,
           published: typeof jm?.published === "number" ? jm.published : undefined,
         });
-        return false;
+        return null;
       } catch (e) {
         setFatal({
           kind: "bot-unreachable",
           detail: e instanceof Error ? e.message : "network error",
         });
-        return false;
+        return null;
       }
     },
     []
@@ -343,16 +350,21 @@ export default function BiniShopPage() {
     }
   }, [copyCmd, haptic]);
 
-  // After an order: fresh reads, spaced out — converges even if the first
-  // read races the bot's push. Pending badge stays until the last one.
-  const refreshSettled = useCallback(async () => {
-    const p = photoRef.current;
-    await refreshMe(initDataRef.current, p, true);
-    await new Promise((r) => setTimeout(r, 8000));
-    await refreshMe(initDataRef.current, photoRef.current, true);
-    await new Promise((r) => setTimeout(r, 12000));
-    await refreshMe(initDataRef.current, photoRef.current, true);
-  }, [refreshMe]);
+  // After an order: fresh reads, spaced out, that refuse to apply snapshots
+  // older than the order itself. Returns true once records cover the order.
+  const settleOrders = useCallback(
+    async (placedAt: number): Promise<boolean> => {
+      const minAt = placedAt - 5000;
+      for (let i = 0; i < 3; i++) {
+        const at = await refreshMe(initDataRef.current, photoRef.current, true, minAt);
+        const t = at ? new Date(at).getTime() : NaN;
+        if (at && !Number.isNaN(t) && t >= minAt) return true;
+        if (i < 2) await new Promise((r) => setTimeout(r, i === 0 ? 8000 : 12000));
+      }
+      return false;
+    },
+    [refreshMe]
+  );
 
   // Gallery loads on demand (event-driven, never in an effect body).
   // Declared before the order actions so doSalvage can reset it.
@@ -421,6 +433,7 @@ export default function BiniShopPage() {
       setMsg(null);
       setCopyCmd(null);
       const item = catalog.items.find((i) => i.id === itemId);
+      const placedAt = Date.now();
       const oid = await queueOrder({ want: "buy", item_id: itemId });
       if (!oid) {
         setCopyCmd(`/buy ${itemId}`);
@@ -441,11 +454,17 @@ export default function BiniShopPage() {
         setCopyCmd(`/buy ${itemId}`);
         haptic(true);
       }
-      await refreshSettled();
+      const settled = await settleOrders(placedAt);
+      if (!settled) {
+        setMsg((m) => ({
+          ok: true,
+          text: `${m?.text || "Done."} — web sync lagging, true numbers catch up shortly.`,
+        }));
+      }
       setPending(false);
       setBusy(null);
     },
-    [busy, catalog, haptic, queueOrder, pollOrder, refreshSettled]
+    [busy, catalog, haptic, queueOrder, pollOrder, settleOrders]
   );
 
   const doConvert = useCallback(async () => {
@@ -454,6 +473,7 @@ export default function BiniShopPage() {
     setBusy("convert");
     setMsg(null);
     setCopyCmd(null);
+    const placedAt = Date.now();
     const oid = await queueOrder({ want: "convert", points: pts });
     if (!oid) {
       setCopyCmd(`/convert ${Number.isFinite(pts) ? pts : ""}`.trim());
@@ -481,10 +501,16 @@ export default function BiniShopPage() {
       setCopyCmd(`/convert ${Number.isFinite(pts) ? pts : ""}`.trim());
       haptic(true);
     }
-    await refreshSettled();
+    const settled = await settleOrders(placedAt);
+    if (!settled) {
+      setMsg((m) => ({
+        ok: true,
+        text: `${m?.text || "Done."} — web sync lagging, true numbers catch up shortly.`,
+      }));
+    }
     setPending(false);
     setBusy(null);
-  }, [busy, convertPts, catalog, haptic, queueOrder, pollOrder, refreshSettled]);
+  }, [busy, convertPts, catalog, haptic, queueOrder, pollOrder, settleOrders]);
 
   const doSalvage = useCallback(async () => {
     if (busy) return;
@@ -497,6 +523,7 @@ export default function BiniShopPage() {
     setBusy("salvage");
     setMsg(null);
     setCopyCmd(null);
+    const placedAt = Date.now();
     const oid = await queueOrder({ want: "salvage", bini_id: bid });
     if (!oid) {
       setCopyCmd(`/salvage ${bid}`);
@@ -527,10 +554,16 @@ export default function BiniShopPage() {
       setCopyCmd(`/salvage ${bid}`);
       haptic(true);
     }
-    await refreshSettled();
+    const settled = await settleOrders(placedAt);
+    if (!settled) {
+      setMsg((m) => ({
+        ok: true,
+        text: `${m?.text || "Done."} — web sync lagging, true numbers catch up shortly.`,
+      }));
+    }
     setPending(false);
     setBusy(null);
-  }, [busy, salvageId, biniList, biniValue, haptic, queueOrder, pollOrder, resetGallery, refreshSettled]);
+  }, [busy, salvageId, biniList, biniValue, haptic, queueOrder, pollOrder, resetGallery, settleOrders]);
 
   const convertPreview = useMemo(() => {
     const pts = parseInt(convertPts, 10);
@@ -651,6 +684,13 @@ export default function BiniShopPage() {
           <div>
             <span className="bini-live bini-live--on">● live — thy true wallet &amp; stats</span>
           </div>
+          {gistMode === "raw" ? (
+            <div>
+              <span className="bini-live bini-live--demo">
+                sync may lag minutes — admin: set BINI_GIST_TOKEN on Vercel + redeploy
+              </span>
+            </div>
+          ) : null}
           {pending ? (
             <div>
               <span className="bini-live bini-live--demo">⏳ syncing with the bot…</span>
