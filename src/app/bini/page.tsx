@@ -230,8 +230,15 @@ export default function BiniShopPage() {
       }
 
       if (cancelled) return;
-      await refreshMe(data, tgPhoto);
-      if (!cancelled) setLoading(false);
+      // Launch reads force-fresh (reopens must show latest balances),
+      // plus one follow-up to catch a push that lands seconds later.
+      await refreshMe(data, tgPhoto, true);
+      if (!cancelled) {
+        setLoading(false);
+        window.setTimeout(() => {
+          void refreshMe(initDataRef.current, photoRef.current, true);
+        }, 12000);
+      }
     };
     boot();
     return () => {
