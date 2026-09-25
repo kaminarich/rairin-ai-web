@@ -99,6 +99,8 @@ export default function BiniShopPage() {
   const [me, setMe] = useState<MeUser | null>(null);
   const [initData, setInitData] = useState("");
   const [snapshotAt, setSnapshotAt] = useState<string | null>(null);
+  const [build, setBuild] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const [copyCmd, setCopyCmd] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(0);
 
@@ -142,6 +144,7 @@ export default function BiniShopPage() {
         if (jm?.ok && jm?.user) {
           setMe({ ...jm.user, photo_url: tgPhoto || jm.user.photo_url });
           setSnapshotAt(typeof jm.snapshot_at === "string" ? jm.snapshot_at : null);
+          setBuild(typeof jm.build === "string" ? jm.build : null);
           setNowMs(Date.now());
           setFatal(null);
           return true;
@@ -236,22 +239,72 @@ export default function BiniShopPage() {
     };
   }, [refreshMe]);
 
-  // --- orders travel page -> bot through Telegram itself (sendData).
-  // Works for every user: keyboard-button launches deliver sendData; for
-  // menu-button launches (where sendData may silently no-op) the chat
-  // command + copy/open-chat fallback is always shown alongside.
-  const sendOrder = useCallback((order: Record<string, unknown>): boolean => {
-    try {
-      const wa = window.Telegram?.WebApp;
-      if (wa && typeof wa.sendData === "function") {
-        wa.sendData(JSON.stringify(order));
-        return true;
+  // MANA math mirrors averify.py salvage_mana_value (tag table + relic + charm).
+  // Declared before the order actions so doSalvage can use it optimistically.
+  const tagMana = useMemo(() => {
+    const m: Record<string, number> = {};
+    Object.values(catalog.rarity || {}).forEach((t) =>
+      (t.tags || []).forEach((tag) => {
+        if (!m[tag.toLowerCase()]) m[tag.toLowerCase()] = t.mana;
+      })
+    );
+    return m;
+  }, [catalog]);
+  const relicMana = catalog.relicMana || 150;
+  const charmBoost = useMemo(() => !!buffOn(me?.buffs.charm_until), [me]);
+  const biniValue = useCallback(
+    (name: string) => {
+      const base = tagMana[(name || "").toLowerCase()] ?? relicMana;
+      return charmBoost ? Math.max(1, Math.round(base * 1.25)) : base;
+    },
+    [tagMana, relicMana, charmBoost]
+  );
+
+  // --- one-tap orders: queued in the gist, executed by the bot poller.
+  // Same UX for every user on every client. No commands, no sendData.
+  const queueOrder = useCallback(
+    async (payload: Record<string, unknown>): Promise<string | null> => {
+      try {
+        const r = await fetch("/api/bini/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initData: initDataRef.current, ...payload }),
+          cache: "no-store",
+        });
+        const j = await r.json();
+        if (j?.ok && typeof j.order_id === "string") return j.order_id as string;
+        setMsg({ ok: false, text: String(j?.error || "Order failed.") });
+      } catch (e) {
+        setMsg({ ok: false, text: `Order failed: ${e instanceof Error ? e.message : e}` });
       }
-    } catch {
-      /* fall through to chat-command fallback */
-    }
-    return false;
-  }, []);
+      return null;
+    },
+    []
+  );
+
+  const pollOrder = useCallback(
+    async (orderId: string): Promise<{ status: string; message: string } | null> => {
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 4000));
+        try {
+          const r = await fetch("/api/bini/order-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ initData: initDataRef.current, order_id: orderId }),
+            cache: "no-store",
+          });
+          const j = await r.json();
+          if (j?.ok && (j.status === "done" || j.status === "failed")) {
+            return { status: j.status as string, message: String(j.message || "") };
+          }
+        } catch {
+          /* keep polling */
+        }
+      }
+      return null;
+    },
+    []
+  );
 
   const copyAndOpenChat = useCallback(async () => {
     if (copyCmd) {
@@ -270,21 +323,6 @@ export default function BiniShopPage() {
       window.open(url, "_blank");
     }
   }, [copyCmd]);
-
-  // After an order, pull fresh records twice — the bot pushes snapshots on
-  // every economy change, so the page converges by itself.
-  const scheduleRefresh = useCallback(() => {
-    const d = initDataRef.current;
-    const p = photoRef.current;
-    if (!d) return;
-    window.setTimeout(() => {
-      photoRef.current = p;
-      void refreshMe(d, p);
-    }, 10000);
-    window.setTimeout(() => {
-      void refreshMe(initDataRef.current || d, photoRef.current);
-    }, 30000);
-  }, [refreshMe]);
 
   const copyFallback = useCallback(async () => {
     if (!copyCmd) return;
@@ -306,98 +344,8 @@ export default function BiniShopPage() {
     setBusy(null);
   }, [initData, busy, me, refreshMe]);
 
-  // --- live-only actions (profile re-fetched after each, so stats stay true) ---
-  const doBuy = useCallback(
-    async (itemId: string) => {
-      if (busy) return;
-      setBusy(itemId);
-      setMsg(null);
-      setCopyCmd(`/buy ${itemId}`);
-      const item = catalog.items.find((i) => i.id === itemId);
-      if (sendOrder({ action: "buy", item_id: itemId })) {
-        setMsg({
-          ok: true,
-          text: `⚔ Order sent — ${item?.emoji || "🛒"} ${item?.name || itemId}. Confirm lands in chat; records auto-refresh. Command below works too 👇`,
-        });
-        haptic(true);
-        scheduleRefresh();
-      } else {
-        setMsg({ ok: false, text: "Direct orders unavailable here — run the command in chat instead 👇" });
-        haptic(false);
-      }
-      setBusy(null);
-    },
-    [busy, catalog, haptic, sendOrder, scheduleRefresh]
-  );
-
-  const doConvert = useCallback(async () => {
-    if (busy) return;
-    const pts = parseInt(convertPts, 10);
-    setBusy("convert");
-    setMsg(null);
-    setCopyCmd(`/convert ${Number.isFinite(pts) ? pts : ""}`.trim());
-    if (sendOrder({ action: "convert", points: pts })) {
-      setMsg({ ok: true, text: "💱 Order sent — confirm lands in chat; records auto-refresh. Command below works too 👇" });
-      haptic(true);
-      scheduleRefresh();
-    } else {
-      setMsg({ ok: false, text: "Direct orders unavailable here — run the command in chat instead 👇" });
-      haptic(false);
-    }
-    setBusy(null);
-  }, [busy, convertPts, haptic, sendOrder, scheduleRefresh]);
-
-  const doSalvage = useCallback(async () => {
-    if (busy) return;
-    const bid = salvageId.trim();
-    if (!bid) {
-      setMsg({ ok: false, text: "Enter a BINI ID to salvage." });
-      return;
-    }
-    if (!window.confirm(`Burn BINI #${bid} for MANA? This is permanent.`)) return;
-    setBusy("salvage");
-    setMsg(null);
-    setCopyCmd(`/salvage ${bid}`);
-    if (sendOrder({ action: "salvage", bini_id: bid })) {
-      setMsg({ ok: true, text: `♻️ Order sent for BINI #${bid} — confirm lands in chat; records auto-refresh. Command below works too 👇` });
-      haptic(true);
-      setSalvageId("");
-      scheduleRefresh();
-    } else {
-      setMsg({ ok: false, text: "Direct orders unavailable here — run the command in chat instead 👇" });
-      haptic(false);
-    }
-    setBusy(null);
-  }, [busy, salvageId, haptic, sendOrder, scheduleRefresh]);
-
-  const convertPreview = useMemo(() => {
-    const pts = parseInt(convertPts, 10);
-    const rate = catalog.rate || 5;
-    if (!Number.isFinite(pts) || pts <= 0) return "—";
-    return `≈ ${Math.floor(pts / rate)} MANA`;
-  }, [convertPts, catalog]);
-
-  // MANA math mirrors averify.py salvage_mana_value (tag table + relic + charm).
-  const tagMana = useMemo(() => {
-    const m: Record<string, number> = {};
-    Object.values(catalog.rarity || {}).forEach((t) =>
-      (t.tags || []).forEach((tag) => {
-        if (!m[tag.toLowerCase()]) m[tag.toLowerCase()] = t.mana;
-      })
-    );
-    return m;
-  }, [catalog]);
-  const relicMana = catalog.relicMana || 150;
-  const charmBoost = useMemo(() => !!buffOn(me?.buffs.charm_until), [me]);
-  const biniValue = useCallback(
-    (name: string) => {
-      const base = tagMana[(name || "").toLowerCase()] ?? relicMana;
-      return charmBoost ? Math.max(1, Math.round(base * 1.25)) : base;
-    },
-    [tagMana, relicMana, charmBoost]
-  );
-
   // Gallery loads on demand (event-driven, never in an effect body).
+  // Declared before the order actions so doSalvage can reset it.
   const galleryBusy = useRef(false);
   const galleryLoaded = useRef(false);
   const loadGallery = useCallback(async () => {
@@ -436,6 +384,139 @@ export default function BiniShopPage() {
     },
     [loadGallery]
   );
+
+  const resetGallery = useCallback(() => {
+    galleryLoaded.current = false;
+    setBiniList(null);
+    setBiniLoading(false);
+    void loadGallery();
+  }, [loadGallery]);
+
+  // --- live-only actions (profile re-fetched after each, so stats stay true) ---
+  const doBuy = useCallback(
+    async (itemId: string) => {
+      if (busy) return;
+      setBusy(itemId);
+      setMsg(null);
+      setCopyCmd(null);
+      const item = catalog.items.find((i) => i.id === itemId);
+      const oid = await queueOrder({ want: "buy", item_id: itemId });
+      if (!oid) {
+        setCopyCmd(`/buy ${itemId}`);
+        haptic(false);
+        setBusy(null);
+        return;
+      }
+      // Optimistic: exact cost is known, reconcile on refresh.
+      if (item) setMe((m) => (m ? { ...m, mana: Math.max(0, m.mana - item.cost) } : m));
+      setPending(true);
+      setMsg({ ok: true, text: `⏳ Brewing ${item?.emoji || "🛒"} ${item?.name || itemId}… the bot confirms in chat.` });
+      const res = await pollOrder(oid);
+      if (res) {
+        setMsg({ ok: res.status === "done", text: res.message || "Done." });
+        haptic(res.status === "done");
+      } else {
+        setMsg({ ok: true, text: "Still in the queue — check the bot chat, then ↻ refresh. Command below works too 👇" });
+        setCopyCmd(`/buy ${itemId}`);
+        haptic(true);
+      }
+      await refreshMe(initDataRef.current, photoRef.current);
+      setPending(false);
+      setBusy(null);
+    },
+    [busy, catalog, haptic, queueOrder, pollOrder, refreshMe]
+  );
+
+  const doConvert = useCallback(async () => {
+    if (busy) return;
+    const pts = parseInt(convertPts, 10);
+    setBusy("convert");
+    setMsg(null);
+    setCopyCmd(null);
+    const oid = await queueOrder({ want: "convert", points: pts });
+    if (!oid) {
+      setCopyCmd(`/convert ${Number.isFinite(pts) ? pts : ""}`.trim());
+      haptic(false);
+      setBusy(null);
+      return;
+    }
+    // Optimistic: same math as the bot (floor + cost = gained * rate).
+    const rate = catalog.rate || 5;
+    const gained = Math.floor(pts / rate);
+    const spent = gained * rate;
+    if (gained > 0) {
+      setMe((m) =>
+        m ? { ...m, rank_points: Math.max(0, m.rank_points - spent), mana: m.mana + gained } : m
+      );
+    }
+    setPending(true);
+    setMsg({ ok: true, text: "⏳ Tribute queued… the bot confirms in chat." });
+    const res = await pollOrder(oid);
+    if (res) {
+      setMsg({ ok: res.status === "done", text: res.message || "Done." });
+      haptic(res.status === "done");
+    } else {
+      setMsg({ ok: true, text: "Still in the queue — check the bot chat, then ↻ refresh. Command below works too 👇" });
+      setCopyCmd(`/convert ${Number.isFinite(pts) ? pts : ""}`.trim());
+      haptic(true);
+    }
+    await refreshMe(initDataRef.current, photoRef.current);
+    setPending(false);
+    setBusy(null);
+  }, [busy, convertPts, catalog, haptic, queueOrder, pollOrder, refreshMe]);
+
+  const doSalvage = useCallback(async () => {
+    if (busy) return;
+    const bid = salvageId.trim();
+    if (!bid) {
+      setMsg({ ok: false, text: "Enter a BINI ID to salvage." });
+      return;
+    }
+    if (!window.confirm(`Burn BINI #${bid} for MANA? This is permanent.`)) return;
+    setBusy("salvage");
+    setMsg(null);
+    setCopyCmd(null);
+    const oid = await queueOrder({ want: "salvage", bini_id: bid });
+    if (!oid) {
+      setCopyCmd(`/salvage ${bid}`);
+      haptic(false);
+      setBusy(null);
+      return;
+    }
+    // Optimistic: same rarity math as the bot, reconcile on refresh.
+    const picked = (biniList || []).find(([id]) => String(id) === bid);
+    if (picked) {
+      const val = biniValue(picked[1]);
+      setMe((m) =>
+        m ? { ...m, mana: m.mana + val, collection: Math.max(0, m.collection - 1) } : m
+      );
+    }
+    setPending(true);
+    setMsg({ ok: true, text: `⏳ Burning BINI #${bid}… the bot confirms in chat.` });
+    const res = await pollOrder(oid);
+    if (res) {
+      setMsg({ ok: res.status === "done", text: res.message || "Done." });
+      haptic(res.status === "done");
+      if (res.status === "done") {
+        setSalvageId("");
+        resetGallery();
+      }
+    } else {
+      setMsg({ ok: true, text: "Still in the queue — check the bot chat, then ↻ refresh. Command below works too 👇" });
+      setCopyCmd(`/salvage ${bid}`);
+      haptic(true);
+    }
+    await refreshMe(initDataRef.current, photoRef.current);
+    setPending(false);
+    setBusy(null);
+  }, [busy, salvageId, biniList, biniValue, haptic, queueOrder, pollOrder, refreshMe, resetGallery]);
+
+  const convertPreview = useMemo(() => {
+    const pts = parseInt(convertPts, 10);
+    const rate = catalog.rate || 5;
+    if (!Number.isFinite(pts) || pts <= 0) return "—";
+    return `≈ ${Math.floor(pts / rate)} MANA`;
+  }, [convertPts, catalog]);
 
   const biniFiltered = useMemo(() => {
     const q = biniQuery.trim().toLowerCase();
@@ -549,6 +630,11 @@ export default function BiniShopPage() {
           <div>
             <span className="bini-live bini-live--on">● live — thy true wallet &amp; stats</span>
           </div>
+          {pending ? (
+            <div>
+              <span className="bini-live bini-live--demo">⏳ syncing with the bot…</span>
+            </div>
+          ) : null}
           <div className="bini-row" style={{ justifyContent: "center", alignItems: "center" }}>
             {snapshotAge ? <span className="bini-note">{snapshotAge}</span> : null}
             <button
@@ -747,23 +833,28 @@ export default function BiniShopPage() {
                 <div className="bini-minis">
                   {biniFiltered.slice(0, biniShown).map(([id, name, img]) => {
                     const selected = salvageId === String(id);
+                    const fav = me?.favorite_id != null && String(me.favorite_id) === String(id);
                     return (
                       <button
                         key={id}
                         type="button"
                         className={`bini-mini${selected ? " bini-mini--sel" : ""}`}
                         onClick={() => {
+                          if (fav) {
+                            setMsg({ ok: false, text: `⭐ #${id} is thy favorite — change it in /mybini first.` });
+                            return;
+                          }
                           setSalvageId(String(id));
                           setMsg(null);
                           setCopyCmd(null);
                         }}
-                        title={`#${id} ${name} → +${biniValue(name)} MANA`}
+                        title={fav ? `#${id} ${name} (favorite — protected)` : `#${id} ${name} → +${biniValue(name)} MANA`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={img} alt={name} loading="lazy" width={96} height={96} />
-                        <b>#{id}</b>
+                        <b>#{id}{fav ? " ⭐" : ""}</b>
                         <span>{name}</span>
-                        <em>🔮 +{biniValue(name)}</em>
+                        <em>{fav ? "protected" : `🔮 +${biniValue(name)}`}</em>
                       </button>
                     );
                   })}
@@ -801,6 +892,17 @@ export default function BiniShopPage() {
           Bound by blood to the bot — every number on this page is thy live record. Same commands work in
           chat: <code>/buy</code> <code>/salvage</code> <code>/convert</code> · wallet: <code>/mana</code>{" "}
           <code>/inventory</code>
+          {build ? (
+            <>
+              <br />
+              bot sync <code>{build}</code>
+              {snapshotAge ? (
+                <>
+                  {" "}· {snapshotAge}
+                </>
+              ) : null}
+            </>
+          ) : null}
         </footer>
       </div>
     </main>
