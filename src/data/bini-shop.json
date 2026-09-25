@@ -3,11 +3,14 @@
   "rateLabel": "5 rank pts = 1 MANA (one-way, min 5 pts)",
   "minConvert": 5,
   "charmBonus": 1.25,
+  "relicMana": 150,
+  "relicNote": "Anything without a category (pre-category elders) salvages as an Ancient Relic — top value.",
   "rarity": {
-    "common": { "mana": 20, "tags": ["neko", "kemonomimi", "hentai", "boobs", "ass", "thigh", "feet"] },
-    "uncommon": { "mana": 35, "tags": ["paizuri", "hyuri", "hthigh", "hmidriff", "hboobs", "hass", "gonewild"] },
-    "rare": { "mana": 60, "tags": ["tentacle", "lewdneko", "hkitsune", "anal", "blowjob"] },
-    "mythic": { "mana": 100, "tags": ["4k", "hentai_anal"] }
+    "common": { "mana": 20, "tags": ["neko", "kemonomimi", "hentai", "thigh", "hthigh", "hmidriff"] },
+    "uncommon": { "mana": 40, "tags": ["boobs", "ass", "hboobs", "hass", "hyuri", "feet", "hkitsune"] },
+    "rare": { "mana": 70, "tags": ["paizuri", "tentacle", "lewdneko", "gonewild", "4k", "blowjob"] },
+    "mythic": { "mana": 110, "tags": ["anal", "hentai_anal"] },
+    "relic": { "mana": 150, "tags": ["pre-category elders & unknowns"] }
   },
   "items": [
     {

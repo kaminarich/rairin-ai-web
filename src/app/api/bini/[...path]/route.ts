@@ -61,7 +61,7 @@ type SnapUser = {
   stats: Record<string, number>;
 };
 
-async function fetchSnapshot(): Promise<{ updated_at: string | null; users: Record<string, SnapUser> } | null> {
+async function fetchGistFile<T>(name: "bini-snapshot.json" | "bini-collections.json"): Promise<T | null> {
   // Authenticated API read first (reliable for secret gists).
   if (GIST_TOKEN) {
     try {
@@ -75,8 +75,8 @@ async function fetchSnapshot(): Promise<{ updated_at: string | null; users: Reco
       });
       if (r.ok) {
         const j = await r.json();
-        const content = j?.files?.["bini-snapshot.json"]?.content as string | undefined;
-        if (content) return JSON.parse(content);
+        const content = j?.files?.[name]?.content as string | undefined;
+        if (content) return JSON.parse(content) as T;
       }
     } catch {
       /* try anonymous raw */
@@ -85,14 +85,18 @@ async function fetchSnapshot(): Promise<{ updated_at: string | null; users: Reco
   // Anonymous raw read (works for secret gists when the URL is known).
   try {
     const r = await fetch(
-      `https://gist.githubusercontent.com/${GIST_USER}/${GIST_ID}/raw/bini-snapshot.json`,
+      `https://gist.githubusercontent.com/${GIST_USER}/${GIST_ID}/raw/${name}`,
       { next: { revalidate: 30 } }
     );
-    if (r.ok) return (await r.json()) as { updated_at: string | null; users: Record<string, SnapUser> };
+    if (r.ok) return (await r.json()) as T;
   } catch {
-    /* no snapshot yet */
+    /* not published yet */
   }
   return null;
+}
+
+async function fetchSnapshot(): Promise<{ updated_at: string | null; users: Record<string, SnapUser> } | null> {
+  return fetchGistFile<{ updated_at: string | null; users: Record<string, SnapUser> }>("bini-snapshot.json");
 }
 
 export async function GET() {
@@ -112,7 +116,7 @@ export async function POST(
 ) {
   const { path } = await params;
   const action = (path || []).join("/");
-  if (!["me", "buy", "salvage", "convert"].includes(action)) {
+  if (!["me", "collection", "buy", "salvage", "convert"].includes(action)) {
     return NextResponse.json({ ok: false, error: "Unknown action." }, { status: 404 });
   }
   let body: Record<string, unknown> = {};
@@ -123,7 +127,7 @@ export async function POST(
   }
 
   // Writes never go through here — the page sends them via Telegram sendData.
-  if (action !== "me") {
+  if (action !== "me" && action !== "collection") {
     return NextResponse.json(
       {
         ok: false,
@@ -140,6 +144,25 @@ export async function POST(
     const reason = BOT_TOKEN ? "invalid initData (open via the bot's /shop or Menu button)" : "server misconfigured (TELEGRAM_BOT_TOKEN missing)";
     return NextResponse.json({ ok: false, error: reason }, { status: 401 });
   }
+
+  // Gallery: viewer's own BINI as [id, name, image], newest first.
+  if (action === "collection") {
+    const cols = await fetchGistFile<{ updated_at: string | null; users: Record<string, [number, string, string][]> }>("bini-collections.json");
+    if (!cols) {
+      return NextResponse.json(
+        { ok: false, error: "Gallery not published yet — the bot pushes it with the stats. Try again shortly." },
+        { status: 503 }
+      );
+    }
+    const arr = Array.isArray(cols.users?.[uid]) ? cols.users[uid] : [];
+    return NextResponse.json({
+      ok: true,
+      snapshot_at: cols.updated_at || null,
+      total: arr.length,
+      items: [...arr].reverse(),
+    });
+  }
+
   const snap = await fetchSnapshot();
   if (!snap) {
     return NextResponse.json(
