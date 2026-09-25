@@ -132,12 +132,12 @@ export default function BiniShopPage() {
   }, []);
 
   const refreshMe = useCallback(
-    async (data: string, tgPhoto: string): Promise<boolean> => {
+    async (data: string, tgPhoto: string, fresh = false): Promise<boolean> => {
       try {
         const rm = await fetch("/api/bini/me", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ initData: data }),
+          body: JSON.stringify({ initData: data, fresh }),
           cache: "no-store",
         });
         const jm = await rm.json();
@@ -336,13 +336,16 @@ export default function BiniShopPage() {
     }
   }, [copyCmd, haptic]);
 
-  const manualRefresh = useCallback(async () => {
-    if (!initData || busy) return;
-    setBusy("refresh");
-    setMsg(null);
-    await refreshMe(initData, me?.photo_url || "");
-    setBusy(null);
-  }, [initData, busy, me, refreshMe]);
+  // After an order: fresh reads, spaced out — converges even if the first
+  // read races the bot's push. Pending badge stays until the last one.
+  const refreshSettled = useCallback(async () => {
+    const p = photoRef.current;
+    await refreshMe(initDataRef.current, p, true);
+    await new Promise((r) => setTimeout(r, 8000));
+    await refreshMe(initDataRef.current, photoRef.current, true);
+    await new Promise((r) => setTimeout(r, 12000));
+    await refreshMe(initDataRef.current, photoRef.current, true);
+  }, [refreshMe]);
 
   // Gallery loads on demand (event-driven, never in an effect body).
   // Declared before the order actions so doSalvage can reset it.
@@ -356,7 +359,7 @@ export default function BiniShopPage() {
       const r = await fetch("/api/bini/collection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify({ initData, fresh: true }),
         cache: "no-store",
       });
       const j = await r.json();
@@ -392,6 +395,17 @@ export default function BiniShopPage() {
     void loadGallery();
   }, [loadGallery]);
 
+  const manualRefresh = useCallback(async () => {
+    if (!initData || busy) return;
+    setBusy("refresh");
+    setMsg(null);
+    await refreshMe(initData, me?.photo_url || "", true);
+    galleryLoaded.current = false;
+    setBiniList(null);
+    if (tab === "salvage") void loadGallery();
+    setBusy(null);
+  }, [initData, busy, me, refreshMe, tab, loadGallery]);
+
   // --- live-only actions (profile re-fetched after each, so stats stay true) ---
   const doBuy = useCallback(
     async (itemId: string) => {
@@ -420,11 +434,11 @@ export default function BiniShopPage() {
         setCopyCmd(`/buy ${itemId}`);
         haptic(true);
       }
-      await refreshMe(initDataRef.current, photoRef.current);
+      await refreshSettled();
       setPending(false);
       setBusy(null);
     },
-    [busy, catalog, haptic, queueOrder, pollOrder, refreshMe]
+    [busy, catalog, haptic, queueOrder, pollOrder, refreshSettled]
   );
 
   const doConvert = useCallback(async () => {
@@ -460,10 +474,10 @@ export default function BiniShopPage() {
       setCopyCmd(`/convert ${Number.isFinite(pts) ? pts : ""}`.trim());
       haptic(true);
     }
-    await refreshMe(initDataRef.current, photoRef.current);
+    await refreshSettled();
     setPending(false);
     setBusy(null);
-  }, [busy, convertPts, catalog, haptic, queueOrder, pollOrder, refreshMe]);
+  }, [busy, convertPts, catalog, haptic, queueOrder, pollOrder, refreshSettled]);
 
   const doSalvage = useCallback(async () => {
     if (busy) return;
@@ -506,10 +520,10 @@ export default function BiniShopPage() {
       setCopyCmd(`/salvage ${bid}`);
       haptic(true);
     }
-    await refreshMe(initDataRef.current, photoRef.current);
+    await refreshSettled();
     setPending(false);
     setBusy(null);
-  }, [busy, salvageId, biniList, biniValue, haptic, queueOrder, pollOrder, refreshMe, resetGallery]);
+  }, [busy, salvageId, biniList, biniValue, haptic, queueOrder, pollOrder, resetGallery, refreshSettled]);
 
   const convertPreview = useMemo(() => {
     const pts = parseInt(convertPts, 10);
