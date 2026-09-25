@@ -308,6 +308,7 @@ export async function POST(
     ok: true,
     snapshot_at: snap.updated_at,
     build: (snap as { build?: string }).build || null,
+    gist_mode: GIST_TOKEN ? "api" : "raw",
     user: {
       id: uid,
       name: row.name,
