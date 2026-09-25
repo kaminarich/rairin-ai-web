@@ -9,7 +9,7 @@
  * stats — if the bot is unreachable the page says so instead of guessing.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./bini.css";
 import bundled from "@/data/bini-shop.json";
 
@@ -51,9 +51,16 @@ type Catalog = {
   rate: number;
   rateLabel?: string;
   minConvert: number;
+  relicMana?: number;
   items: ShopItem[];
   rarity: Record<string, { mana: number; tags: string[] }>;
 };
+
+// [id, name, image] — newest first from the API.
+type BiniItem = [number, string, string];
+const GALLERY_PAGE = 24;
+// Must match the bot's BINI_BOT_USERNAME (averify.py) for the chat fallback.
+const BOT_USERNAME = "rairin_bot";
 
 function buffOn(until?: string | null): string | null {
   if (!until) return null;
@@ -73,6 +80,7 @@ declare global {
         initData?: string;
         initDataUnsafe?: { user?: { first_name?: string; username?: string; photo_url?: string } };
         sendData?: (data: string) => void;
+        openTelegramLink?: (url: string) => void;
         HapticFeedback?: { notificationOccurred: (k: string) => void };
         colorScheme?: string;
       };
@@ -105,6 +113,13 @@ export default function BiniShopPage() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [salvageId, setSalvageId] = useState("");
   const [convertPts, setConvertPts] = useState("25");
+  const [biniList, setBiniList] = useState<BiniItem[] | null>(null);
+  const [biniLoading, setBiniLoading] = useState(false);
+  const [biniQuery, setBiniQuery] = useState("");
+  const [biniShown, setBiniShown] = useState(GALLERY_PAGE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const initDataRef = useRef("");
+  const photoRef = useRef("");
 
   const haptic = useCallback((ok: boolean) => {
     try {
@@ -180,6 +195,8 @@ export default function BiniShopPage() {
         return;
       }
       setInitData(data);
+      initDataRef.current = data;
+      photoRef.current = tgPhoto;
 
       // Catalog: bundled values mirror the bot; upgrade to live when possible.
       // Live shape: {rate, min_convert, rarity:{tag:mana}, items:{id:{...}}}
@@ -220,8 +237,10 @@ export default function BiniShopPage() {
   }, [refreshMe]);
 
   // --- orders travel page -> bot through Telegram itself (sendData).
-  // Zero inbound VPS setup needed. Falls back to a chat command + copy.
-  const sendOrder = useCallback((order: Record<string, unknown>, fallbackCmd: string): boolean => {
+  // Works for every user: keyboard-button launches deliver sendData; for
+  // menu-button launches (where sendData may silently no-op) the chat
+  // command + copy/open-chat fallback is always shown alongside.
+  const sendOrder = useCallback((order: Record<string, unknown>): boolean => {
     try {
       const wa = window.Telegram?.WebApp;
       if (wa && typeof wa.sendData === "function") {
@@ -231,9 +250,41 @@ export default function BiniShopPage() {
     } catch {
       /* fall through to chat-command fallback */
     }
-    setCopyCmd(fallbackCmd);
     return false;
   }, []);
+
+  const copyAndOpenChat = useCallback(async () => {
+    if (copyCmd) {
+      try {
+        await navigator.clipboard.writeText(copyCmd);
+      } catch {
+        /* user copies manually from the field */
+      }
+    }
+    const url = `https://t.me/${BOT_USERNAME}`;
+    try {
+      const wa = window.Telegram?.WebApp;
+      if (wa && typeof wa.openTelegramLink === "function") wa.openTelegramLink(url);
+      else window.open(url, "_blank");
+    } catch {
+      window.open(url, "_blank");
+    }
+  }, [copyCmd]);
+
+  // After an order, pull fresh records twice — the bot pushes snapshots on
+  // every economy change, so the page converges by itself.
+  const scheduleRefresh = useCallback(() => {
+    const d = initDataRef.current;
+    const p = photoRef.current;
+    if (!d) return;
+    window.setTimeout(() => {
+      photoRef.current = p;
+      void refreshMe(d, p);
+    }, 10000);
+    window.setTimeout(() => {
+      void refreshMe(initDataRef.current || d, photoRef.current);
+    }, 30000);
+  }, [refreshMe]);
 
   const copyFallback = useCallback(async () => {
     if (!copyCmd) return;
@@ -261,21 +312,22 @@ export default function BiniShopPage() {
       if (busy) return;
       setBusy(itemId);
       setMsg(null);
-      setCopyCmd(null);
+      setCopyCmd(`/buy ${itemId}`);
       const item = catalog.items.find((i) => i.id === itemId);
-      if (sendOrder({ action: "buy", item_id: itemId }, `/buy ${itemId}`)) {
+      if (sendOrder({ action: "buy", item_id: itemId })) {
         setMsg({
           ok: true,
-          text: `⚔ Order sent — ${item?.emoji || "🛒"} ${item?.name || itemId}. The bot confirms in chat; then ↻ refresh.`,
+          text: `⚔ Order sent — ${item?.emoji || "🛒"} ${item?.name || itemId}. Confirm lands in chat; records auto-refresh. Command below works too 👇`,
         });
         haptic(true);
+        scheduleRefresh();
       } else {
         setMsg({ ok: false, text: "Direct orders unavailable here — run the command in chat instead 👇" });
         haptic(false);
       }
       setBusy(null);
     },
-    [busy, catalog, haptic, sendOrder]
+    [busy, catalog, haptic, sendOrder, scheduleRefresh]
   );
 
   const doConvert = useCallback(async () => {
@@ -283,16 +335,17 @@ export default function BiniShopPage() {
     const pts = parseInt(convertPts, 10);
     setBusy("convert");
     setMsg(null);
-    setCopyCmd(null);
-    if (sendOrder({ action: "convert", points: pts }, `/convert ${Number.isFinite(pts) ? pts : ""}`.trim())) {
-      setMsg({ ok: true, text: "💱 Order sent — the bot confirms in chat; then ↻ refresh." });
+    setCopyCmd(`/convert ${Number.isFinite(pts) ? pts : ""}`.trim());
+    if (sendOrder({ action: "convert", points: pts })) {
+      setMsg({ ok: true, text: "💱 Order sent — confirm lands in chat; records auto-refresh. Command below works too 👇" });
       haptic(true);
+      scheduleRefresh();
     } else {
       setMsg({ ok: false, text: "Direct orders unavailable here — run the command in chat instead 👇" });
       haptic(false);
     }
     setBusy(null);
-  }, [busy, convertPts, haptic, sendOrder]);
+  }, [busy, convertPts, haptic, sendOrder, scheduleRefresh]);
 
   const doSalvage = useCallback(async () => {
     if (busy) return;
@@ -304,17 +357,18 @@ export default function BiniShopPage() {
     if (!window.confirm(`Burn BINI #${bid} for MANA? This is permanent.`)) return;
     setBusy("salvage");
     setMsg(null);
-    setCopyCmd(null);
-    if (sendOrder({ action: "salvage", bini_id: bid }, `/salvage ${bid}`)) {
-      setMsg({ ok: true, text: `♻️ Order sent for BINI #${bid} — the bot confirms in chat; then ↻ refresh.` });
+    setCopyCmd(`/salvage ${bid}`);
+    if (sendOrder({ action: "salvage", bini_id: bid })) {
+      setMsg({ ok: true, text: `♻️ Order sent for BINI #${bid} — confirm lands in chat; records auto-refresh. Command below works too 👇` });
       haptic(true);
       setSalvageId("");
+      scheduleRefresh();
     } else {
       setMsg({ ok: false, text: "Direct orders unavailable here — run the command in chat instead 👇" });
       haptic(false);
     }
     setBusy(null);
-  }, [busy, salvageId, haptic, sendOrder]);
+  }, [busy, salvageId, haptic, sendOrder, scheduleRefresh]);
 
   const convertPreview = useMemo(() => {
     const pts = parseInt(convertPts, 10);
@@ -322,6 +376,91 @@ export default function BiniShopPage() {
     if (!Number.isFinite(pts) || pts <= 0) return "—";
     return `≈ ${Math.floor(pts / rate)} MANA`;
   }, [convertPts, catalog]);
+
+  // MANA math mirrors averify.py salvage_mana_value (tag table + relic + charm).
+  const tagMana = useMemo(() => {
+    const m: Record<string, number> = {};
+    Object.values(catalog.rarity || {}).forEach((t) =>
+      (t.tags || []).forEach((tag) => {
+        if (!m[tag.toLowerCase()]) m[tag.toLowerCase()] = t.mana;
+      })
+    );
+    return m;
+  }, [catalog]);
+  const relicMana = catalog.relicMana || 150;
+  const charmBoost = useMemo(() => !!buffOn(me?.buffs.charm_until), [me]);
+  const biniValue = useCallback(
+    (name: string) => {
+      const base = tagMana[(name || "").toLowerCase()] ?? relicMana;
+      return charmBoost ? Math.max(1, Math.round(base * 1.25)) : base;
+    },
+    [tagMana, relicMana, charmBoost]
+  );
+
+  // Gallery loads on demand (event-driven, never in an effect body).
+  const galleryBusy = useRef(false);
+  const galleryLoaded = useRef(false);
+  const loadGallery = useCallback(async () => {
+    if (galleryBusy.current || galleryLoaded.current || !initData) return;
+    galleryBusy.current = true;
+    setBiniLoading(true);
+    try {
+      const r = await fetch("/api/bini/collection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData }),
+        cache: "no-store",
+      });
+      const j = await r.json();
+      if (j?.ok && Array.isArray(j.items)) {
+        setBiniList(j.items as BiniItem[]);
+        galleryLoaded.current = true;
+      } else {
+        setBiniList([]);
+      }
+    } catch {
+      setBiniList([]);
+    } finally {
+      galleryBusy.current = false;
+      setBiniLoading(false);
+    }
+  }, [initData]);
+
+  const switchTab = useCallback(
+    (t: "shop" | "salvage" | "convert") => {
+      setTab(t);
+      setMsg(null);
+      setCopyCmd(null);
+      setBiniShown(GALLERY_PAGE);
+      if (t === "salvage") void loadGallery();
+    },
+    [loadGallery]
+  );
+
+  const biniFiltered = useMemo(() => {
+    const q = biniQuery.trim().toLowerCase();
+    if (!biniList) return [];
+    if (!q) return biniList;
+    return biniList.filter(
+      ([id, name]) => String(id).includes(q) || (name || "").toLowerCase().includes(q)
+    );
+  }, [biniList, biniQuery]);
+
+  // Lazy scroll: reveal more cards as the sentinel enters view.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || tab !== "salvage") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setBiniShown((n) => Math.min(n + GALLERY_PAGE, biniFiltered.length || n + GALLERY_PAGE));
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [tab, biniFiltered.length]);
 
   const snapshotAge = useMemo(() => {
     if (!snapshotAt || !nowMs) return "";
@@ -489,10 +628,7 @@ export default function BiniShopPage() {
             <button
               key={t}
               className={`bini-tab ${tab === t ? "bini-tab--active" : ""}`}
-              onClick={() => {
-                setTab(t);
-                setMsg(null);
-              }}
+              onClick={() => switchTab(t)}
               type="button"
             >
               {t === "shop" ? "🛒 Shop" : t === "salvage" ? "♻️ Salvage" : "💱 Convert"}
@@ -511,13 +647,21 @@ export default function BiniShopPage() {
             >
               Copy
             </button>
+            <button
+              className="bini-buy"
+              style={{ width: "auto", marginTop: 0 }}
+              type="button"
+              onClick={copyAndOpenChat}
+            >
+              Copy + chat 💬
+            </button>
           </div>
         ) : null}
 
         {tab === "shop" ? (
           <section className="bini-panel">
             <p className="bini-note">
-              Rate: {catalog.rate} rank pts = 1 MANA · salvage 20/35/60/100 by rarity
+              Rate: {catalog.rate} rank pts = 1 MANA · salvage 20/40/70/110, elders {relicMana}
               {liveCatalog ? " · live prices" : " · mirror prices"}
             </p>
             <div className="bini-grid">
@@ -580,6 +724,53 @@ export default function BiniShopPage() {
               </button>
             </div>
             {msg ? <p className={`bini-msg ${msg.ok ? "bini-msg--ok" : "bini-msg--err"}`}>{msg.text}</p> : null}
+
+            <div className="bini-row">
+              <input
+                className="bini-input"
+                value={biniQuery}
+                onChange={(e) => setBiniQuery(e.target.value)}
+                placeholder="🔎 Search thy BINI by ID or name…"
+                aria-label="Search collection"
+              />
+            </div>
+            {biniLoading ? (
+              <p className="bini-note">… opening thy vault …</p>
+            ) : biniList !== null && biniList.length === 0 ? (
+              <p className="bini-note">Thy vault is empty — /getbini first.</p>
+            ) : (
+              <>
+                <p className="bini-note">
+                  Tap a relic to load its ID 👇 ({biniFiltered.length} shown
+                  {biniList ? ` of ${biniList.length}` : ""})
+                </p>
+                <div className="bini-minis">
+                  {biniFiltered.slice(0, biniShown).map(([id, name, img]) => {
+                    const selected = salvageId === String(id);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className={`bini-mini${selected ? " bini-mini--sel" : ""}`}
+                        onClick={() => {
+                          setSalvageId(String(id));
+                          setMsg(null);
+                          setCopyCmd(null);
+                        }}
+                        title={`#${id} ${name} → +${biniValue(name)} MANA`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img} alt={name} loading="lazy" width={96} height={96} />
+                        <b>#{id}</b>
+                        <span>{name}</span>
+                        <em>🔮 +{biniValue(name)}</em>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
+              </>
+            )}
           </section>
         ) : null}
 
