@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import catalog from "@/data/bini-shop.json";
 
@@ -56,12 +56,27 @@ type SnapUser = {
   mana: number;
   rank_points: number;
   rank_letter: string;
+  favorite_id?: number | null;
   buffs: Record<string, unknown>;
   collection: number;
   stats: Record<string, number>;
 };
 
-async function fetchGistFile<T>(name: "bini-snapshot.json" | "bini-collections.json"): Promise<T | null> {
+type OrderEntry = {
+  id: string;
+  uid: string;
+  action: string;
+  item_id?: string;
+  bini_id?: string;
+  points?: number;
+  ts: number;
+  status: string;
+  message?: string;
+};
+
+type OrderDoc = { updated_at: string | null; orders: Record<string, OrderEntry> };
+
+async function fetchGistFile<T>(name: string, revalidate = 30): Promise<T | null> {
   // Authenticated API read first (reliable for secret gists).
   if (GIST_TOKEN) {
     try {
@@ -71,7 +86,7 @@ async function fetchGistFile<T>(name: "bini-snapshot.json" | "bini-collections.j
           Accept: "application/vnd.github+json",
           "User-Agent": "rairin-ai-web",
         },
-        next: { revalidate: 30 },
+        next: { revalidate },
       });
       if (r.ok) {
         const j = await r.json();
@@ -86,7 +101,7 @@ async function fetchGistFile<T>(name: "bini-snapshot.json" | "bini-collections.j
   try {
     const r = await fetch(
       `https://gist.githubusercontent.com/${GIST_USER}/${GIST_ID}/raw/${name}`,
-      { next: { revalidate: 30 } }
+      { next: { revalidate } }
     );
     if (r.ok) return (await r.json()) as T;
   } catch {
@@ -95,8 +110,36 @@ async function fetchGistFile<T>(name: "bini-snapshot.json" | "bini-collections.j
   return null;
 }
 
-async function fetchSnapshot(): Promise<{ updated_at: string | null; users: Record<string, SnapUser> } | null> {
-  return fetchGistFile<{ updated_at: string | null; users: Record<string, SnapUser> }>("bini-snapshot.json");
+async function fetchSnapshot(): Promise<{ updated_at: string | null; build?: string; users: Record<string, SnapUser> } | null> {
+  return fetchGistFile<{ updated_at: string | null; build?: string; users: Record<string, SnapUser> }>("bini-snapshot.json", 10);
+}
+
+async function readOrders(): Promise<OrderDoc | null> {
+  return fetchGistFile<OrderDoc>("bini-orders.json", 5);
+}
+
+async function readCollections(): Promise<{ updated_at: string | null; users: Record<string, [number, string, string][]> } | null> {
+  return fetchGistFile<{ updated_at: string | null; users: Record<string, [number, string, string][]> }>("bini-collections.json", 15);
+}
+
+async function writeOrders(doc: OrderDoc): Promise<boolean> {
+  if (!GIST_TOKEN) return false;
+  try {
+    const r = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${GIST_TOKEN}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "rairin-ai-web",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ files: { "bini-orders.json": { content: JSON.stringify(doc) } } }),
+      cache: "no-store",
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
 }
 
 export async function GET() {
@@ -116,7 +159,7 @@ export async function POST(
 ) {
   const { path } = await params;
   const action = (path || []).join("/");
-  if (!["me", "collection", "buy", "salvage", "convert"].includes(action)) {
+  if (!["me", "collection", "order", "order-status", "buy", "salvage", "convert"].includes(action)) {
     return NextResponse.json({ ok: false, error: "Unknown action." }, { status: 404 });
   }
   let body: Record<string, unknown> = {};
@@ -126,8 +169,8 @@ export async function POST(
     body = {};
   }
 
-  // Writes never go through here — the page sends them via Telegram sendData.
-  if (action !== "me" && action !== "collection") {
+  // Direct writes never go through here — use the "order" queue below.
+  if (action !== "me" && action !== "collection" && action !== "order" && action !== "order-status") {
     return NextResponse.json(
       {
         ok: false,
@@ -147,7 +190,7 @@ export async function POST(
 
   // Gallery: viewer's own BINI as [id, name, image], newest first.
   if (action === "collection") {
-    const cols = await fetchGistFile<{ updated_at: string | null; users: Record<string, [number, string, string][]> }>("bini-collections.json");
+    const cols = await readCollections();
     if (!cols) {
       return NextResponse.json(
         { ok: false, error: "Gallery not published yet — the bot pushes it with the stats. Try again shortly." },
@@ -161,6 +204,81 @@ export async function POST(
       total: arr.length,
       items: [...arr].reverse(),
     });
+  }
+
+  // Order status poll: the bot flips pending -> done/failed.
+  if (action === "order-status") {
+    const doc = await readOrders();
+    const entry = doc?.orders?.[String(body.order_id || "")];
+    if (!entry || entry.uid !== uid) {
+      return NextResponse.json({ ok: false, error: "Order not found." }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true, status: entry.status, message: entry.message || "" });
+  }
+
+  // One-tap order queue: validated here for instant feedback, executed by
+  // the bot poller (re-validated there). uid comes from signed initData —
+  // users can only ever order for themselves.
+  if (action === "order") {
+    if (!GIST_TOKEN) {
+      return NextResponse.json(
+        { ok: false, error: "Shop queue not configured yet (admin: set BINI_GIST_TOKEN on Vercel)." },
+        { status: 503 }
+      );
+    }
+    const want = String(body.want || "");
+    const snap3 = await fetchSnapshot();
+    const row3 = snap3?.users?.[uid];
+    if (!row3) {
+      return NextResponse.json({ ok: false, error: "No record for thee yet." }, { status: 404 });
+    }
+    const order: OrderEntry = { id: randomUUID(), uid, action: "", ts: Date.now(), status: "pending" };
+    if (want === "buy") {
+      const item = (catalog as { items: { id: string; name: string; cost: number }[] }).items.find(
+        (i) => i.id === String(body.item_id || "")
+      );
+      if (!item) return NextResponse.json({ ok: false, error: "Unknown item." }, { status: 400 });
+      if ((row3.mana ?? 0) < item.cost) {
+        return NextResponse.json(
+          { ok: false, error: `Need ${item.cost} MANA, thou hast ${row3.mana ?? 0}.` },
+          { status: 400 }
+        );
+      }
+      order.action = "buy";
+      order.item_id = item.id;
+    } else if (want === "salvage") {
+      const bid = String(body.bini_id || "");
+      const cols = await readCollections();
+      const arr = Array.isArray(cols?.users?.[uid]) ? (cols as { users: Record<string, [number, string, string][]> }).users[uid] : [];
+      if (!arr.some((e) => String(e[0]) === bid)) {
+        return NextResponse.json({ ok: false, error: `BINI #${bid} is not in thy vault.` }, { status: 404 });
+      }
+      if (row3.favorite_id != null && String(row3.favorite_id) === bid) {
+        return NextResponse.json({ ok: false, error: "That BINI is thy favorite — change it in /mybini first." }, { status: 400 });
+      }
+      order.action = "salvage";
+      order.bini_id = bid;
+    } else if (want === "convert") {
+      const pts = parseInt(String(body.points ?? ""), 10);
+      const min = (catalog as { minConvert?: number }).minConvert || 5;
+      if (!Number.isFinite(pts) || pts < min) {
+        return NextResponse.json({ ok: false, error: `Minimum convert is ${min} rank pts.` }, { status: 400 });
+      }
+      if ((row3.rank_points ?? 0) < pts) {
+        return NextResponse.json({ ok: false, error: `Thou hast only ${row3.rank_points ?? 0} rank pts.` }, { status: 400 });
+      }
+      order.action = "convert";
+      order.points = pts;
+    } else {
+      return NextResponse.json({ ok: false, error: "Unknown order." }, { status: 400 });
+    }
+    const doc = (await readOrders()) || { updated_at: null, orders: {} };
+    doc.orders[order.id] = order;
+    doc.updated_at = new Date().toISOString();
+    if (!(await writeOrders(doc))) {
+      return NextResponse.json({ ok: false, error: "Could not queue order. Try again." }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, order_id: order.id });
   }
 
   const snap = await fetchSnapshot();
@@ -186,6 +304,7 @@ export async function POST(
   return NextResponse.json({
     ok: true,
     snapshot_at: snap.updated_at,
+    build: (snap as { build?: string }).build || null,
     user: {
       id: uid,
       name: row.name,
@@ -193,6 +312,7 @@ export async function POST(
       mana: row.mana,
       rank_points: row.rank_points,
       rank_letter: row.rank_letter,
+      favorite_id: row.favorite_id ?? null,
       buffs: row.buffs,
       collection: row.collection,
       stats: row.stats,
