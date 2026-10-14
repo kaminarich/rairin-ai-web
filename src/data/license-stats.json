@@ -1,10 +1,10 @@
 {
-  "active": 855,
-  "registered": 862,
-  "root": 82,
-  "reseller": 800,
+  "active": 861,
+  "registered": 868,
+  "root": 83,
+  "reseller": 805,
   "resellers": 5,
   "blacklisted": 7,
-  "updatedAt": "2026-10-13",
+  "updatedAt": "2026-10-14",
   "source": "ssh"
 }
